@@ -1,38 +1,33 @@
-import mysql.connector
+import pymysql
 import operator
 from threeteam import case4
 from passwords import DATABASE_HOST,DATABASE_USERNAME,DATABASE_PASSWORD
+import time
 
 
 #Connect to MySQL Database
-mydb = mysql.connector.connect(
+mydb = pymysql.connections.Connection(
   host=DATABASE_HOST,
   user=DATABASE_USERNAME,
   passwd=DATABASE_PASSWORD,
 
 )
-
+cur = mydb.cursor(pymysql.cursors.DictCursor)
 print("\n")
 
-
-mycursor = mydb.cursor(dictionary=True)
-mycursor.execute("use mgdb")
+# mycursor = mydb.cursor(dictionary=True)
+cur.execute("use mgdb")
 # mycursor.execute("Select g.game_id, score1, score2, g.tournament_id, team1_id,team2_id, sport, gender, category from sign as s" 
 # + " INNER JOIN game as g on g.game_id = s.game_id" 
 # + " INNER JOIN tournament as t on g.tournament_id = t.tournament_id;")
 
 
-mycursor.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
+cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
 + " INNER JOIN game as g on g.game_id = s.game_id "
 +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
 + " INNER JOIN pool as p on p.team_id = g.team1_id")
-pool = mycursor.fetchall()
-
-
-# for item in pool:
-#     print("Item: " + str(item))
-
-
+pool = cur.fetchall()
+cur.close()
 #creating dict for keeping track of all the scores
 scoresForPool = {}
 totalPointsForTeam = {}
@@ -41,7 +36,7 @@ PDforTeams = {}
 
 def calculateRawPoints(dataGames):
     # #Calculates raw points for the teams
-    # print("Pool in Calculate: " + str(pool))
+    print("Pool in Calculate: " + str(pool))
     for game in dataGames:
         # print("Game: " + str(game))
         givePoints(game)
@@ -52,7 +47,6 @@ def calculateRawPoints(dataGames):
 def head2head(RawPointCheck,dbData):
     repeatAmount = len(RawPointCheck)
     returnStatement = True
-    #Nothing yet
     # goes to teams's tied game and gets the result
     # assigns H2H Points:
     #   team won: 2 pts
@@ -73,8 +67,6 @@ def head2head(RawPointCheck,dbData):
             for game in dbData:
                 team1Score = game['score1']
                 team2Score = game['score2']
-                # print("Starting game " + str(game['team1_id']) +  " vs " + str(game['team2_id']))
-                # print("Each Game" + str(game))
                 if game['team1_id'] == scores[0] and game['team2_id'] == scores[1]:
                     print(" 1 - Found a game where these teams played!" + str(game['team1_id']) + " vs " + str(game['team2_id']))
                     gameH2HFound = game['game_id']
@@ -122,9 +114,9 @@ def head2head(RawPointCheck,dbData):
                 # return assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], 0)
 
     
-    if repeatAmount  == 3:
-        #Case 4 - No one plays anyone
-        case4()
+    # if repeatAmount[0]  == 3 or repeatAmount[1]  == 3 or repeatAmount[2]  == 3 or repeatAmount[3]  == 3 or repeatAmount[4]  == 3:
+    #     #Case 4 - No one plays anyone
+    #     case4()
         #Case 5
     #No repeats in score H2H
     
@@ -270,7 +262,7 @@ def duplicateChecker(points, keyName):
     ##It checks if the points are duplicate so it knows if it succeeded
     rev_multidict = {}
     repeatData = {}
-    repeat = False
+    # repeat = False
     print("Points: " + str(points))
     #Inverts the dict to see if duplicates
     for key, value in points.items():
@@ -300,7 +292,6 @@ def giveRanks(sorted_teams):
 
 def rankBasedOn():
     ##Puts the teams in order of ranks and places it on the database (not yet implemented)
-    
     for team in scoresForPool:
         # if scoresForPool[team]['H2Hpoints'] >
         totalPointsForTeam[team] = scoresForPool[team]['rawPoints'] + (scoresForPool[team]['H2Hpoints'] * 0.1) + (scoresForPool[team]['PDScore'] * 0.001)
@@ -334,15 +325,9 @@ def calculateStandings(pool):
             return
         else:
             print("--------------- Duplicate still found, going to PD  ---------------")
-
-            # pointDifferential(dbData)
             duplicateChecker(scoresForPool, 'TotalPoints')
             rankBasedOn()
-            # print("Point Differential data dbData: " + str(dbData))
-            # print("Point Differential data totalPointsForTeam: " + str(totalPointsForTeam))
-            
             return
-        # rankBasedOn(scoresForPool,"rawPoints")
   
     else:
         rankBasedOn()
@@ -378,15 +363,10 @@ def calculateStandings(pool):
 # return H2H points for each team
 
 
+#Main that gets called
+start = time.time()
 
 calculateStandings(pool)
-##pushPointstoDB()
 
-# givePoints(scoreInfo)
-# print("Score " + str(scoreInfo))
-# sortedTeams = rankBasedOn(points)
-
-# if not sortedTeams:
-#     print("Scores are equal!")
-    #assign points based on H2H
-# # print("Sorted Teams: " + sortedTeams)
+end = time.time()
+# print("Time to run " + str(end - start))
