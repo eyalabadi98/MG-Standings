@@ -51,6 +51,7 @@ def calculateRawPoints(dataGames):
 
 def head2head(RawPointCheck,dbData):
     repeatAmount = len(RawPointCheck)
+    returnStatement = True
     #Nothing yet
     # goes to teams's tied game and gets the result
     # assigns H2H Points:
@@ -67,20 +68,22 @@ def head2head(RawPointCheck,dbData):
         # print("In Repeat Amount")
         for key, scores in RawPointCheck.items():
             scores = list(scores)
-            print("Repeating " + str(key))
+            print("Repeating " + str(scores))
             gameH2HFound = None
             for game in dbData:
                 team1Score = game['score1']
                 team2Score = game['score2']
-                print("Starting game " + str(game['team1_id']) +  " vs " + str(game['team2_id']))
+                # print("Starting game " + str(game['team1_id']) +  " vs " + str(game['team2_id']))
                 # print("Each Game" + str(game))
                 if game['team1_id'] == scores[0] and game['team2_id'] == scores[1]:
                     print(" 1 - Found a game where these teams played!" + str(game['team1_id']) + " vs " + str(game['team2_id']))
                     gameH2HFound = game['game_id']
+                    # returnStatement = True
                     break
                 if game['team1_id'] == scores[1] and game['team2_id'] == scores[0]:   
                     print(" 2 - Found a game where these teams played!" + str(game['team1_id']) + " vs " + str(game['team2_id']))
                     gameH2HFound = game['game_id']
+                    # returnStatement = True
                     break
             print("gameH2HFound " +  str(gameH2HFound))
             if gameH2HFound != None:
@@ -93,21 +96,28 @@ def head2head(RawPointCheck,dbData):
                     winner = 0
                 assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], winner)
             else:
-                print("RawPointCheck: " + str(RawPointCheck))
-                for tied in RawPointCheck:
-                    print("scoresForPool: 95 " +  str(scoresForPool))
-                    teams = list(RawPointCheck[tied])
-                    print("Tied is " + str(teams))
-                    # games = list(tied)
-                    print("H2H game not found " + str(teams))
-                    team1 = teams[0]
-                    team2 = teams[1]
-                    scoresForPool[team1]['H2Hpoints'] = 1
-                    scoresForPool[team2]['H2Hpoints'] = 1
-                    scoresForPool[team1]['TotalPoints'] += 0.1
-                    scoresForPool[team2]['TotalPoints'] += 0.1
-                    continue
-        return
+                print("Game not found")
+                team1 = scores[0]
+                team2 = scores[1]
+                scoresForPool[team1]['H2Hpoints'] = 1
+                scoresForPool[team2]['H2Hpoints'] = 1
+                scoresForPool[team1]['TotalPoints'] += 0.1
+                scoresForPool[team2]['TotalPoints'] += 0.1
+                returnStatement = False
+                # for tied in RawPointCheck:
+                #     print("scoresForPool: 95 " +  str(scoresForPool))
+                #     teams = list(RawPointCheck[tied])
+                #     print("Tied is " + str(teams))
+                #     # games = list(tied)
+                #     print("H2H game not found " + str(teams))
+                #     team1 = teams[0]
+                #     team2 = teams[1]
+                #     scoresForPool[team1]['H2Hpoints'] = 1
+                #     scoresForPool[team2]['H2Hpoints'] = 1
+                #     scoresForPool[team1]['TotalPoints'] += 0.1
+                #     scoresForPool[team2]['TotalPoints'] += 0.1
+                continue
+        return returnStatement
         # assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], 0)
                 # return assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], 0)
 
@@ -120,7 +130,7 @@ def head2head(RawPointCheck,dbData):
     
     return
 def assignH2H(game_id, team1, team2, winner):
-    print("A game has been matched for H2H:  " + str(game_id) + " The winner is " + str(winner))
+    # print("A game has been matched for H2H:  " + str(game_id) + " The winner is " + str(winner))
     if winner == 0:
         print("Tied or not played!")
         # scoresForPool[winner]['H2Hpoints'] += 1
@@ -129,42 +139,42 @@ def assignH2H(game_id, team1, team2, winner):
     scoresForPool[winner]['TotalPoints'] += 0.2
 
     #add tied game score
-    print("scoresForPool " + str(scoresForPool))
+    # print("scoresForPool " + str(scoresForPool))
     return True
 
-def calculatePointsDiffforPD(data,team_id):
-    #Gets the data from all the games and calculates the point in favor minus the points scored on them
-    teamScorePositive = 0
-    teamScoreNegative = 0
-    for game in data:
-        if game['team1_id'] == team_id:
+# def calculatePointsDiffforPD(data,team_id):
+#     #Gets the data from all the games and calculates the point in favor minus the points scored on them
+#     teamScorePositive = 0
+#     teamScoreNegative = 0
+#     for game in data:
+#         if game['team1_id'] == team_id:
             
-            score = game['score1'] - game['score2']
-            teamScorePositive += score
-            print("Adding " + str(score) + " to " + str(team_id))
-            continue
-        if game['team2_id'] == team_id:
-            score = game['score2'] - game['score1']
-            teamScorePositive += score
-            print("Adding " + str(score) + " to " + str(team_id))
-            continue
-    difference = teamScorePositive - teamScoreNegative
-    goalsforTeam[team_id] = { "positive": teamScorePositive, 'negative': teamScoreNegative, 'difference': difference }
-    print("teamScorePositive for  "+str(team_id) + " is " +  str(teamScorePositive))
-    print("teamScoreNegative: " +  str(teamScoreNegative)) 
-    return difference    
+#             score = game['score1'] - game['score2']
+#             teamScorePositive += score
+#             print("Adding " + str(score) + " to " + str(team_id))
+#             continue
+#         if game['team2_id'] == team_id:
+#             score = game['score2'] - game['score1']
+#             teamScorePositive += score
+#             print("Adding " + str(score) + " to " + str(team_id))
+#             continue
+#     difference = teamScorePositive - teamScoreNegative
+#     goalsforTeam[team_id] = { "positive": teamScorePositive, 'negative': teamScoreNegative, 'difference': difference }
+#     print("teamScorePositive for  "+str(team_id) + " is " +  str(teamScorePositive))
+#     print("teamScoreNegative: " +  str(teamScoreNegative)) 
+#     return difference    
 
 def pointDifferential(data):
     #calculate total points scored for a given team minus total points scored on
     # teams = [8,10]
 
-    teamPD = []
-    print("Data is " + str(data))
-    print("totalPointsForTeam " + str(totalPointsForTeam))
-    # team = 6
-    for game in data:
-        team1 = game['team1_id']
-        team2 = game['team2_id']
+    # teamPD = []
+    # # print("Data is " + str(data))
+    # print("totalPointsForTeam " + str(scoresForPool))
+    # # team = 6
+    # for game in data:
+    #     team1 = game['team1_id']
+    #     team2 = game['team2_id']
         # print("Game is " +  str(game))
         # if 
         #     PointsScored[team1] = 
@@ -319,13 +329,13 @@ def calculateStandings(pool):
         H2H = head2head(RawPointCheck, dbData)
         if H2H:
             #Must check if duplicate
-            "Worked out H2H!"
+            print("Worked out H2H!")
             rankBasedOn()
             return
         else:
             print("--------------- Duplicate still found, going to PD  ---------------")
 
-            pointDifferential(dbData)
+            # pointDifferential(dbData)
             duplicateChecker(scoresForPool, 'TotalPoints')
             rankBasedOn()
             # print("Point Differential data dbData: " + str(dbData))
