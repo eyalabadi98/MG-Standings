@@ -146,7 +146,8 @@ def assignH2H(game_id, team1, team2, winner):
     # print("A game has been matched for H2H:  " + str(game_id) + " The winner is " + str(winner))
     if winner == 0:
         print("Tied or not played!")
-        # scoresForPool[winner]['H2Hpoints'] += 1
+        scoresForPool[team1]['H2Hpoints'] += 1
+        scoresForPool[team2]['H2Hpoints'] += 1
         return
     scoresForPool[winner]['H2Hpoints'] += 2
     scoresForPool[winner]['TotalPoints'] += 0.2
