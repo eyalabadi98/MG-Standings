@@ -227,7 +227,7 @@ def pushPointstoDB():
 def initializeDictOfGames(team):
         #Initializing the dict when a team doesnt exists
         if not team in scoresForPool:
-            scoresForPool[team] = { "rawPoints": 0, "H2Hpoints" : 0, 'PDPoints': 0, 'TotalPoints': 0, 'PDScore': 0, 'PointsScoredOn': 0 }
+            scoresForPool[team] = { "rawPoints": 0, "H2Hpoints" : 0, 'PDPoints': 0, 'TotalPoints': 0, 'PDScore': 0, 'GoalsInFavour': 0, 'PointsScoredOn': 0}
         return 0
 
 
@@ -249,6 +249,7 @@ def givePoints(scoreInfo):
         difference = scoreInfo['score1'] - scoreInfo['score2']
         addPoints(team1, difference, 'PDScore')
         addPoints(team2, (-1*difference), 'PDScore')
+        addPoints(team1, score1, 'GoalsInFavour')
         addPoints(team1, win, 'rawPoints')
         addPoints(team2,loss, 'rawPoints')
         scoreInfo['winner_id'] = scoreInfo['team1_id']
@@ -259,6 +260,7 @@ def givePoints(scoreInfo):
         difference = scoreInfo['score2'] - scoreInfo['score1']
         addPoints(team2, difference, 'PDScore')
         addPoints(team1, (-1*difference), 'PDScore')
+        addPoints(team1, score2, 'GoalsInFavour')
         addPoints(team1, loss, 'rawPoints')
         addPoints(team2,win, 'rawPoints')
         scoreInfo['winner_id'] = scoreInfo['team2_id']
@@ -268,6 +270,8 @@ def givePoints(scoreInfo):
         # print("Tie")
         addPoints(team1, tie, 'rawPoints')
         addPoints(team2,tie, 'rawPoints')
+        addPoints(team1, score1, 'GoalsInFavour')
+        addPoints(team2, score2, 'GoalsInFavour') #score 1 is the same as score 2 but just for clarity.
         scoreInfo['winner_id'] = 0
         scoreInfo['tie'] = True
         return
@@ -316,7 +320,7 @@ def rankBasedOn():
     ##Puts the teams in order of ranks and places it on the database (not yet implemented)
     for team in scoresForPool:
         # if scoresForPool[team]['H2Hpoints'] >
-        totalPointsForTeam[team] = scoresForPool[team]['rawPoints'] + (scoresForPool[team]['H2Hpoints'] * 0.1) + (scoresForPool[team]['PDScore'] * 0.001)
+        totalPointsForTeam[team] = scoresForPool[team]['rawPoints'] + (scoresForPool[team]['H2Hpoints'] * 0.1) + (scoresForPool[team]['PDScore'] * 0.001 + (scoresForPool[team]['GoalsInFavour'] * 0.00001))
     print("totalPointsForTeam: " + str(totalPointsForTeam))
     sorted_teams = sorted(totalPointsForTeam.items(), key=lambda kv: kv[1], reverse=True)
     rankedTeams = giveRanks(sorted_teams)
