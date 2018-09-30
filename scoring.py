@@ -1,6 +1,7 @@
 import pymysql
 import operator
 from threeteam import h2hThreeTeams
+from teamsPlayed import didteamsplay
 from passwords import DATABASE_HOST,DATABASE_USERNAME,DATABASE_PASSWORD
 import time
 
@@ -55,20 +56,6 @@ def didteamsplay(dbData, team1_id, team2_id):
             # returnStatement = True
             return game
     return False
-    # for game in dbData:
-    #     team1Score = game['score1']
-    #     team2Score = game['score2']
-    #     if game['team1_id'] == scores[0] and game['team2_id'] == scores[1]:
-    #         print(" 1 - Found a game where these teams played!" + str(game['team1_id']) + " vs " + str(game['team2_id']))
-    #         gameH2HFound = game['game_id']
-    #         # returnStatement = True
-    #         return game
-    #     if game['team1_id'] == scores[1] and game['team2_id'] == scores[0]:   
-    #         print(" 2 - Found a game where these teams played!" + str(game['team1_id']) + " vs " + str(game['team2_id']))
-    #         gameH2HFound = game['game_id']
-    #         # returnStatement = True
-    #         return game
-    # return False
 def H2HgamenotFound(scores,scoresForPool):
     team1 = scores[0]
     team2 = scores[1]
@@ -86,7 +73,7 @@ def h2hTwoTeams(key, scores, RawPointCheck, dbData):
     gameH2HFound = didteamsplay(dbData,scores[0], scores[1])
     
     print("gameH2HFound " +  str(gameH2HFound))
-    if gameH2HFound != None:
+    if gameH2HFound != False:
         game = gameH2HFound
         team1Score = game['score1']
         team2Score = game['score2']
@@ -129,7 +116,7 @@ def head2head(RawPointCheck,dbData):
             if len(scores) == 2:
                 h2hTwoTeams(key, scores, RawPointCheck, dbData)
             if len(scores) == 3:
-                h2hThreeTeams(key, scores, RawPointCheck, dbData)
+                h2hThreeTeams(key, scores, dbData, scoresForPool)
                 
         # assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], 0)
                 # return assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], 0)
@@ -148,6 +135,8 @@ def assignH2H(game_id, team1, team2, winner):
         print("Tied or not played!")
         scoresForPool[team1]['H2Hpoints'] += 1
         scoresForPool[team2]['H2Hpoints'] += 1
+        scoresForPool[team2]['TotalPoints'] += 0.1
+        scoresForPool[team2]['TotalPoints'] += 0.1
         return
     scoresForPool[winner]['H2Hpoints'] += 2
     scoresForPool[winner]['TotalPoints'] += 0.2
@@ -292,10 +281,17 @@ def duplicateChecker(points, keyName):
     print("Points: " + str(points))
     #Inverts the dict to see if duplicates
     for key, value in points.items():
+        # print("KeyName dup " + str(value))
         if keyName == "":
+            # print("KeyName dup")
             rev_multidict.setdefault(value, set()).add(key)
+        elif keyName == "rawPoints":
+            rev_multidict.setdefault(value['rawPoints'], set()).add(key)
         else:
-            rev_multidict.setdefault(value[keyName], set()).add(key)
+            totalPointsForTeam = value['rawPoints'] + (value['H2Hpoints'] * 0.1) + (value['PDScore'] * 0.001 + (value['GoalsInFavour'] * 0.00001))
+            value['TotalPnt'] = totalPointsForTeam
+            print("TotalPnt  is " + str(totalPointsForTeam))
+            rev_multidict.setdefault(value['TotalPnt'], set()).add(key)
     for key, values in rev_multidict.items(): 
         if len(values) > 1:
             # Tell us which teams/score repeat
