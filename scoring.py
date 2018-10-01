@@ -11,6 +11,7 @@ mydb = pymysql.connections.Connection(
   host=DATABASE_HOST,
   user=DATABASE_USERNAME,
   passwd=DATABASE_PASSWORD,
+  autocommit=True
 
 )
 cur = mydb.cursor(pymysql.cursors.DictCursor)
@@ -27,8 +28,11 @@ cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as to
 + " INNER JOIN game as g on g.game_id = s.game_id "
 +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
 + " INNER JOIN pool as p on p.team_id = g.team1_id")
+
+tournament_id = 9
+poolName = 'Pool A'
 pool = cur.fetchall()
-cur.close()
+
 #creating dict for keeping track of all the scores
 scoresForPool = {}
 totalPointsForTeam = {}
@@ -43,19 +47,7 @@ def calculateRawPoints(dataGames):
         givePoints(game)
         # print(game)
     # print("All Points" + str(scoresForPool))
-def didteamsplay(dbData, team1_id, team2_id):
-    # team1Score = game['score1']
-    # team2Score = game['score2']
-    for game in dbData:
-        if game['team1_id'] == team1_id and game['team2_id'] == team2_id:
-            print(" 1 - Found a game where these teams played!" + str(game['team1_id']) + " vs " + str(game['team2_id']))
-            # returnStatement = True
-            return game
-        if game['team1_id'] == team2_id and game['team2_id'] == team1_id: 
-            print(" 2 - Found a game where these teams played!" + str(game['team1_id']) + " vs " + str(game['team2_id']))
-            # returnStatement = True
-            return game
-    return False
+
 def H2HgamenotFound(scores,scoresForPool):
     team1 = scores[0]
     team2 = scores[1]
@@ -130,6 +122,7 @@ def head2head(RawPointCheck,dbData):
     
     return
 def assignH2H(game_id, team1, team2, winner):
+
     # print("A game has been matched for H2H:  " + str(game_id) + " The winner is " + str(winner))
     if winner == 0:
         print("Tied or not played!")
@@ -145,70 +138,19 @@ def assignH2H(game_id, team1, team2, winner):
     # print("scoresForPool " + str(scoresForPool))
     return True
 
-# def calculatePointsDiffforPD(data,team_id):
-#     #Gets the data from all the games and calculates the point in favor minus the points scored on them
-#     teamScorePositive = 0
-#     teamScoreNegative = 0
-#     for game in data:
-#         if game['team1_id'] == team_id:
-            
-#             score = game['score1'] - game['score2']
-#             teamScorePositive += score
-#             print("Adding " + str(score) + " to " + str(team_id))
-#             continue
-#         if game['team2_id'] == team_id:
-#             score = game['score2'] - game['score1']
-#             teamScorePositive += score
-#             print("Adding " + str(score) + " to " + str(team_id))
-#             continue
-#     difference = teamScorePositive - teamScoreNegative
-#     goalsforTeam[team_id] = { "positive": teamScorePositive, 'negative': teamScoreNegative, 'difference': difference }
-#     print("teamScorePositive for  "+str(team_id) + " is " +  str(teamScorePositive))
-#     print("teamScoreNegative: " +  str(teamScoreNegative)) 
-#     return difference    
-
-def pointDifferential(data):
-    #calculate total points scored for a given team minus total points scored on
-    # teams = [8,10]
-
-    # teamPD = []
-    # # print("Data is " + str(data))
-    # print("totalPointsForTeam " + str(scoresForPool))
-    # # team = 6
-    # for game in data:
-    #     team1 = game['team1_id']
-    #     team2 = game['team2_id']
-        # print("Game is " +  str(game))
-        # if 
-        #     PointsScored[team1] = 
-
-
-    #     PDCalculation = calculatePointsDiffforPD(data,team)
-    #     print("PDCalculation: " + str(PDCalculation))
-    #     teamPD.append(PDCalculation)  
-    # print("TeamPD is "+ str(teamPD))
-    # if teamPD[0] > teamPD[1]:
-    #     print("Team1 Won PD")
-    #     addPoints(teams[0], 2, 'PDPoints')
-    #     addPoints(teams[0], 0.02, 'TotalPoints')
-    # if teamPD[0] > teamPD[1]:
-    #     print("Team2 Won PD")
-    #     addPoints(teams[1], 2, 'PDPoints')
-    #     addPoints(teams[1], 0.02, 'TotalPoints')
-    # if teamPD[0] == teamPD[1]:
-    #     print("PD had Tie")
-    #     addPoints(teams[0], 1, 'PDPoints')
-    #     addPoints(teams[1], 1, 'PDPoints')
-    #     addPoints(teams[1], 0.01, 'TotalPoints')
-    #     addPoints(teams[0], 0.01, 'TotalPoints')
-    #Doesnt make sense as if it is over 9, it goes into tenths place
-    # scoresForPool['PDPoints'] += PDCalculation
-    return 0
-def pushPointstoDB():
+def pushPointstoDB(scoresForPool):
     for teams in scoresForPool:
-        print("Teams: " + str(teams))
-    sql = "UPDATE customers SET address = 'Canyon 123' WHERE address = 'Valley 345'"
-    sql = "UPDATE `standings` SET h2h = 3, pd = 4, h2h2 = 0, final_rank = 1  WHERE tournament_id = 9 AND team_id = 10 "
+        data  = scoresForPool[teams]
+        print("teams " + str(poolName))
+        sql = "REPLACE into standings (tournament_id, pool, team_id, points, wins, losses, ties, h2h, pd, h2h2, final_rank, qualification ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],data['H2Hpoints'], data['PDScore'],0, data['TotalPnt'],0)
+        cur.execute(sql)
+        print("Teams pushing to DB: " + str(sql))
+
+    # sql = "UPDATE customers SET address = 'Canyon 123' WHERE address = 'Valley 345'"
+    # sql = "UPDATE `standings` SET h2h = 3, pd = 4, h2h2 = 0, final_rank = 1  WHERE tournament_id = 9 AND team_id = 10 "
+    
+    print(sql)
+    return
     # mycursor.execute(sql)
     # mydb.commit()
 
@@ -216,7 +158,7 @@ def pushPointstoDB():
 def initializeDictOfGames(team):
         #Initializing the dict when a team doesnt exists
         if not team in scoresForPool:
-            scoresForPool[team] = { "rawPoints": 0, "H2Hpoints" : 0, 'PDPoints': 0, 'TotalPoints': 0, 'PDScore': 0, 'GoalsInFavour': 0, 'PointsScoredOn': 0}
+            scoresForPool[team] = { "rawPoints": 0, "H2Hpoints" : 0, 'PDPoints': 0, 'TotalPoints': 0, 'PDScore': 0, 'GoalsInFavour': 0, 'PointsScoredOn': 0, 'Wins': 0 , 'Losses': 0, 'Ties': 0}
         return 0
 
 
@@ -232,13 +174,18 @@ def givePoints(scoreInfo):
     tie = 1
     initializeDictOfGames(team1)
     initializeDictOfGames(team2)
-
+    tournament_id = scoreInfo['tournament_id']
     if score1 > score2:
         # print("Winner is score1")
         difference = scoreInfo['score1'] - scoreInfo['score2']
         addPoints(team1, difference, 'PDScore')
         addPoints(team2, (-1*difference), 'PDScore')
         addPoints(team1, score1, 'GoalsInFavour')
+
+        addPoints(team1, 1, 'Wins')
+        addPoints(team2, 1, 'Losses')
+        
+
         addPoints(team1, win, 'rawPoints')
         addPoints(team2,loss, 'rawPoints')
         scoreInfo['winner_id'] = scoreInfo['team1_id']
@@ -250,6 +197,8 @@ def givePoints(scoreInfo):
         addPoints(team2, difference, 'PDScore')
         addPoints(team1, (-1*difference), 'PDScore')
         addPoints(team1, score2, 'GoalsInFavour')
+        addPoints(team2, 1, 'Wins')
+        addPoints(team1, 1, 'Losses')
         addPoints(team1, loss, 'rawPoints')
         addPoints(team2,win, 'rawPoints')
         scoreInfo['winner_id'] = scoreInfo['team2_id']
@@ -261,6 +210,8 @@ def givePoints(scoreInfo):
         addPoints(team2,tie, 'rawPoints')
         addPoints(team1, score1, 'GoalsInFavour')
         addPoints(team2, score2, 'GoalsInFavour') #score 1 is the same as score 2 but just for clarity.
+        addPoints(team1, 1, 'Ties')
+        addPoints(team2, 1, 'Ties')
         scoreInfo['winner_id'] = 0
         scoreInfo['tie'] = True
         return
@@ -320,6 +271,7 @@ def rankBasedOn():
     print("totalPointsForTeam: " + str(totalPointsForTeam))
     sorted_teams = sorted(totalPointsForTeam.items(), key=lambda kv: kv[1], reverse=True)
     rankedTeams = giveRanks(sorted_teams)
+    pushPointstoDB(scoresForPool)
     return rankedTeams
     
 def MySQLCursorDictToDict(pool):
@@ -384,11 +336,11 @@ def calculateStandings(pool):
 # tied: 1 point each
 # return H2H points for each team
 
-
 #Main that gets called
 start = time.time()
 
 calculateStandings(pool)
 
+cur.close()
 end = time.time()
 # print("Time to run " + str(end - start))
