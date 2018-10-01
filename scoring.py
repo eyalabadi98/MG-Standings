@@ -106,21 +106,11 @@ def head2head(RawPointCheck,dbData):
         # print("In Repeat Amount")
         for key, scores in RawPointCheck.items():
             if len(scores) == 2:
-                h2hTwoTeams(key, scores, RawPointCheck, dbData)
+                returnStatement = h2hTwoTeams(key, scores, RawPointCheck, dbData)
             if len(scores) == 3:
-                h2hThreeTeams(key, scores, dbData, scoresForPool)
-                
-        # assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], 0)
-                # return assignH2H(gameH2HFound, game['team1_id'], game['team2_id'], 0)
+                returnStatement = h2hThreeTeams(key, scores, dbData, scoresForPool)
 
-    
-    # if repeatAmount[0]  == 3 or repeatAmount[1]  == 3 or repeatAmount[2]  == 3 or repeatAmount[3]  == 3 or repeatAmount[4]  == 3:
-    #     #Case 4 - No one plays anyone
-    #     case4()
-        #Case 5
-    #No repeats in score H2H
-    
-    return
+    return returnStatement
 def assignH2H(game_id, team1, team2, winner):
 
     # print("A game has been matched for H2H:  " + str(game_id) + " The winner is " + str(winner))

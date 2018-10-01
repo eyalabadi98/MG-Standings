@@ -109,24 +109,34 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool):
         teamsThatPlayed = occuranceOfTeamPlays.copy()
 
         #We can do elimination. If a team won 2 games, they are winners (case 9)
-        teamThatPlayedTwiceAndWonTwice = list(teamWins.keys())[list(teamWins.values()).index(2)]
-        del occuranceOfTeamPlays[teamThatPlayedTwiceAndWonTwice]
-        otherTeam1 = random.choice(occuranceOfTeamPlays.keys())
-        del occuranceOfTeamPlays[otherTeam1]
-        otherTeam2 = random.choice(occuranceOfTeamPlays.keys())
-        del occuranceOfTeamPlays[otherTeam2]
-        print("Team " + str(teamThatPlayedTwiceAndWonTwice) + " played twice")
-        if teamWins.setdefault(teamThatPlayedTwiceAndWonTwice, None) == 2:
-            #This has to be case 9
-            print("Case 9")
-            rankings[teamThatPlayedTwiceAndWonTwice] = firstPlace
-            del teamsThatPlayed[teamThatPlayedTwiceAndWonTwice]
-            getTeam1VSTeam2 = didteamsplay(dbData, otherTeam1, otherTeam2)
-            if getTeam1VSTeam2:
-                winnerOfRemaining = getTeam1VSTeam2['winner_id']
-                rankings[winnerOfRemaining] = secondPlace
-                del teamsThatPlayed[winnerOfRemaining]
-                rankings[random.choice(teamsThatPlayed.keys())] = thirdPlace
+        try:
+            teamThatPlayedTwiceAndWonTwice = list(teamWins.keys())[list(teamWins.values()).index(2)]
+            del occuranceOfTeamPlays[teamThatPlayedTwiceAndWonTwice]
+            otherTeam1 = random.choice(occuranceOfTeamPlays.keys())
+            del occuranceOfTeamPlays[otherTeam1]
+            otherTeam2 = random.choice(occuranceOfTeamPlays.keys())
+            del occuranceOfTeamPlays[otherTeam2]
+            print("Team " + str(teamThatPlayedTwiceAndWonTwice) + " played twice")
+            if teamWins.setdefault(teamThatPlayedTwiceAndWonTwice, None) == 2:
+                #This has to be case 9
+                print("Case 9")
+                rankings[teamThatPlayedTwiceAndWonTwice] = firstPlace
+                del teamsThatPlayed[teamThatPlayedTwiceAndWonTwice]
+                getTeam1VSTeam2 = didteamsplay(dbData, otherTeam1, otherTeam2)
+                if getTeam1VSTeam2:
+                    winnerOfRemaining = getTeam1VSTeam2['winner_id']
+                    rankings[winnerOfRemaining] = secondPlace
+                    del teamsThatPlayed[winnerOfRemaining]
+                    rankings[random.choice(teamsThatPlayed.keys())] = thirdPlace
+                    return
+
+        except:
+            print("Case 15")
+            for team in teamWins:
+                rankings[team] = firstPlace
+                print("Giving first place to " + str(team))
+            
+            
 
         #case 15
         print("3 games in between them, more math :/ ")
