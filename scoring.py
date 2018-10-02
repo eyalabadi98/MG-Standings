@@ -88,7 +88,7 @@ def h2hTwoTeams(key, scores, RawPointCheck, dbData):
         returnStatement = False
     return returnStatement
 
-def head2head(RawPointCheck,dbData):
+def head2head(RawPointCheck,dbData, h2h2h=False):
     repeatAmount = len(RawPointCheck)
     returnStatement = True
     # goes to teams's tied game and gets the result
@@ -108,7 +108,7 @@ def head2head(RawPointCheck,dbData):
             if len(scores) == 2:
                 returnStatement = h2hTwoTeams(key, scores, RawPointCheck, dbData)
             if len(scores) == 3:
-                returnStatement = h2hThreeTeams(key, scores, dbData, scoresForPool)
+                returnStatement = h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2h)
 
     return returnStatement
 def assignH2H(game_id, team1, team2, winner):
@@ -132,7 +132,7 @@ def pushPointstoDB(scoresForPool):
     for teams in scoresForPool:
         data  = scoresForPool[teams]
         print("teams " + str(poolName))
-        sql = "REPLACE into standings (tournament_id, pool, team_id, points, wins, losses, ties, h2h, pd, h2h2, final_rank, qualification ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],data['H2Hpoints'], data['PDScore'],0, data['TotalPnt'],0)
+        sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],data['H2Hpoints'], data['PDScore'],data['H2H2points'], data['TotalPnt'],data['RankNumber'], data['GoalsInFavour'])
         cur.execute(sql)
         print("Teams pushing to DB: " + str(sql))
 
@@ -148,7 +148,7 @@ def pushPointstoDB(scoresForPool):
 def initializeDictOfGames(team):
         #Initializing the dict when a team doesnt exists
         if not team in scoresForPool:
-            scoresForPool[team] = { "rawPoints": 0, "H2Hpoints" : 0, 'PDPoints': 0, 'TotalPoints': 0, 'PDScore': 0, 'GoalsInFavour': 0, 'PointsScoredOn': 0, 'Wins': 0 , 'Losses': 0, 'Ties': 0}
+            scoresForPool[team] = { "rawPoints": 0, "H2Hpoints" : 0, 'PDPoints': 0, 'TotalPoints': 0, 'PDScore': 0, 'GoalsInFavour': 0, 'PointsScoredOn': 0, 'Wins': 0 , 'Losses': 0, 'Ties': 0, 'RankNumber': 0, 'H2H2points': 0}
         return 0
 
 
@@ -165,17 +165,17 @@ def givePoints(scoreInfo):
     initializeDictOfGames(team1)
     initializeDictOfGames(team2)
     tournament_id = scoreInfo['tournament_id']
+
+    addPoints(team1, score1, 'GoalsInFavour')
+    addPoints(team2, score2, 'GoalsInFavour')
+
     if score1 > score2:
         # print("Winner is score1")
         difference = scoreInfo['score1'] - scoreInfo['score2']
         addPoints(team1, difference, 'PDScore')
         addPoints(team2, (-1*difference), 'PDScore')
-        addPoints(team1, score1, 'GoalsInFavour')
-
         addPoints(team1, 1, 'Wins')
         addPoints(team2, 1, 'Losses')
-        
-
         addPoints(team1, win, 'rawPoints')
         addPoints(team2,loss, 'rawPoints')
         scoreInfo['winner_id'] = scoreInfo['team1_id']
@@ -186,7 +186,6 @@ def givePoints(scoreInfo):
         difference = scoreInfo['score2'] - scoreInfo['score1']
         addPoints(team2, difference, 'PDScore')
         addPoints(team1, (-1*difference), 'PDScore')
-        addPoints(team1, score2, 'GoalsInFavour')
         addPoints(team2, 1, 'Wins')
         addPoints(team1, 1, 'Losses')
         addPoints(team1, loss, 'rawPoints')
@@ -198,8 +197,6 @@ def givePoints(scoreInfo):
         # print("Tie")
         addPoints(team1, tie, 'rawPoints')
         addPoints(team2,tie, 'rawPoints')
-        addPoints(team1, score1, 'GoalsInFavour')
-        addPoints(team2, score2, 'GoalsInFavour') #score 1 is the same as score 2 but just for clarity.
         addPoints(team1, 1, 'Ties')
         addPoints(team2, 1, 'Ties')
         scoreInfo['winner_id'] = 0
@@ -229,7 +226,7 @@ def duplicateChecker(points, keyName):
         elif keyName == "rawPoints":
             rev_multidict.setdefault(value['rawPoints'], set()).add(key)
         else:
-            totalPointsForTeam = value['rawPoints'] + (value['H2Hpoints'] * 0.1) + (value['PDScore'] * 0.001 + (value['GoalsInFavour'] * 0.00001))
+            totalPointsForTeam = value['rawPoints'] + (value['H2Hpoints'] * 0.1) + (value['PDScore'] * 0.0001) + (value['H2H2points'] * 0.00001) + (value['GoalsInFavour'] * 0.0000001)
             value['TotalPnt'] = totalPointsForTeam
             print("TotalPnt  is " + str(totalPointsForTeam))
             rev_multidict.setdefault(value['TotalPnt'], set()).add(key)
@@ -246,7 +243,7 @@ def duplicateChecker(points, keyName):
 def giveRanks(sorted_teams):
     ranks = []
     print('\n')
-    for scores in sorted_teams:
+    for standings, scores in enumerate(sorted_teams):
         print("Final Standings: " + str(scores))
         ranks.append(scores[0])
     # print("ranks: " + str(ranks))
@@ -257,9 +254,13 @@ def rankBasedOn():
     ##Puts the teams in order of ranks and places it on the database (not yet implemented)
     for team in scoresForPool:
         # if scoresForPool[team]['H2Hpoints'] >
-        totalPointsForTeam[team] = scoresForPool[team]['rawPoints'] + (scoresForPool[team]['H2Hpoints'] * 0.1) + (scoresForPool[team]['PDScore'] * 0.001 + (scoresForPool[team]['GoalsInFavour'] * 0.00001))
+        totalPointsForTeam[team] = scoresForPool[team]['rawPoints'] + (scoresForPool[team]['H2Hpoints'] * 0.1) + (scoresForPool[team]['PDScore'] * 0.0001 +  (scoresForPool[team]['H2H2points']) * 0.00001 + (scoresForPool[team]['GoalsInFavour'] * 0.0000001))
+        scoresForPool[team]['TotalPnt'] = totalPointsForTeam[team]
     print("totalPointsForTeam: " + str(totalPointsForTeam))
     sorted_teams = sorted(totalPointsForTeam.items(), key=lambda kv: kv[1], reverse=True)
+    for stand, teams in enumerate(sorted_teams):
+        teams = teams[0]
+        scoresForPool[teams]['RankNumber'] = (stand +1)
     rankedTeams = giveRanks(sorted_teams)
     pushPointstoDB(scoresForPool)
     return rankedTeams
@@ -289,8 +290,18 @@ def calculateStandings(pool):
             return
         else:
             print("--------------- Duplicate still found, going to PD  ---------------")
-            duplicateChecker(scoresForPool, 'TotalPoints')
+            RawPointCheckH2H2 =  duplicateChecker(scoresForPool, 'TotalPoints')
+            if not RawPointCheckH2H2:
+                
+                print("--------------- No more duplicates, ending  ---------------")
+                rankBasedOn()
+                return
+
+            print("--------------- Still duplicates, going to H2H2  ---------------")
+            H2H2 = head2head(RawPointCheckH2H2, dbData, True)
+            print("scoresForPool: " + str(scoresForPool))
             rankBasedOn()
+            
             return
   
     else:
