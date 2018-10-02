@@ -68,7 +68,14 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
     #Need to check if none of the games are tied to proceed below, if yes, go to another method
     if allGamesNonTie > 0:
         print("Found a game that is not tied, so going to rest of cases")
-        return tiedThreeWay(allGamesNonTie, occuranceOfTeamPlays, rev_multidict, tiedGamesDict)
+        tiedThreeWay(rankings, allGamesNonTie, occuranceOfTeamPlays, rev_multidict, tiedGamesDict, teamWins)
+    
+        for team in rankings:
+            if h2h2 == True:
+                scoresForPool[team]['H2H2points'] = rankings[team]
+            scoresForPool[team]['H2Hpoints'] = rankings[team]
+        return
+
 
     ##Check if non of the games are tie
     if len(gamesPlayed) == 2:
@@ -112,6 +119,7 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
                 rankings[otherTeam1] = secondPlace
                 rankings[otherTeam2] = secondPlace
                 print(" case 8: If the team that played twice won twice, we know they are the winner ")
+                return False
 
             if teamWins.setdefault(teamThatPlayedTwice, None) == 0:  
                 #Case 7
@@ -120,6 +128,7 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
                 rankings[teamThatPlayedTwice] = secondPlace
                 rankings[otherTeam1] = firstPlace
                 rankings[otherTeam2] = firstPlace
+                return False
 
     if len(gamesPlayed) == 3:
         # If 3 games were played, we know it must be between: 9 or  15
@@ -145,13 +154,14 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
                     rankings[winnerOfRemaining] = secondPlace
                     del teamsThatPlayed[winnerOfRemaining]
                     rankings[random.choice(teamsThatPlayed.keys())] = thirdPlace
-                    return
+                    return True
 
         except:
             print("Case 15")
             for team in teamWins:
                 rankings[team] = secondPlace
-                print("Giving first place to " + str(team))
+                print("Giving second place to " + str(team))
+                return False
             
             
 
@@ -167,24 +177,43 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
     return 0
 #No team plays each other
 
-def tiedThreeWay(allGamesNonTie, occuranceOfTeamPlays, rev_multidict, tiedGamesDict):
+def tiedThreeWay(rankings, allGamesNonTie, occuranceOfTeamPlays, rev_multidict, tiedGamesDict, teamWins):
     rev_tiedGamesDict = {}
     for teamsTied in tiedGamesDict: #Reversing array to see who played and how many
             rev_tiedGamesDict.setdefault(tiedGamesDict[teamsTied], set()).add(teamsTied)
 
     if rev_tiedGamesDict[1]:
-        tiedteam1 = random.choice(list(occuranceOfTeamPlays.keys()))
-        print("rer")
-        del occuranceOfTeamPlays[tiedteam1]
-        tiedteam2 = random.choice(list(occuranceOfTeamPlays.keys()))
-        del occuranceOfTeamPlays[tiedteam2]
-        winningTeam = random.choice(list(occuranceOfTeamPlays.keys()))
-        del occuranceOfTeamPlays[winningTeam]
-        rankings[tiedteam1] = secondPlace
-        rankings[tiedteam2] = secondPlace
-        rankings[winningTeam] = firstPlace
-        return True
-    return False
+        if not list(teamWins.keys())[list(teamWins.values()).index(2)] == None: 
+            print("Case 10 executed")
+            teamWonTwice = list(teamWins.keys())[list(teamWins.values()).index(2)]
+            rankings[teamWonTwice] = firstPlace
+            del occuranceOfTeamPlays[teamWonTwice]
+
+            tiedteam1 = random.choice(list(occuranceOfTeamPlays.keys()))
+            rankings[tiedteam1] = secondPlace
+            del occuranceOfTeamPlays[tiedteam1]
+
+            tiedteam2 = random.choice(list(occuranceOfTeamPlays.keys()))
+            rankings[tiedteam2] = secondPlace
+            del occuranceOfTeamPlays[tiedteam2]
+
+            return False
+        elif list(teamWins.keys())[list(teamWins.values()).index(0)]:
+            print("Case 11, meaning a team list twice")
+            losingTeam = list(teamWins.keys())[list(teamWins.values()).index(0)]
+            rankings[losingTeam] = secondPlace
+            del occuranceOfTeamPlays[losingTeam]
+
+            tiedteam1 = random.choice(list(occuranceOfTeamPlays.keys()))
+            rankings[tiedteam1] = firstPlace
+            del occuranceOfTeamPlays[tiedteam1]
+
+            tiedteam2 = random.choice(list(occuranceOfTeamPlays.keys()))
+            rankings[tiedteam2] = firstPlace
+            del occuranceOfTeamPlays[tiedteam2]
+            return False
+            
+
 
 
 

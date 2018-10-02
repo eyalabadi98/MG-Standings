@@ -39,6 +39,9 @@ totalPointsForTeam = {}
 goalsforTeam = {}
 PDforTeams = {}
 
+#Used to know what steps each team has gone up to, so we can avoid putting it in the database
+teamTrackUpToStep = {}
+
 def calculateRawPoints(dataGames):
     # #Calculates raw points for the teams
     print("Pool in Calculate: " + str(pool))
@@ -57,13 +60,12 @@ def H2HgamenotFound(scores,scoresForPool):
     scoresForPool[team2]['TotalPoints'] += 0.1
     return False
 
-def h2hTwoTeams(key, scores, RawPointCheck, dbData):
+def h2hTwoTeams(key, scores, RawPointCheck, dbData, h2h2h):
     scores = list(scores)
     print("Repeating " + str(scores))
     returnStatement = True
     gameH2HFound = None
     gameH2HFound = didteamsplay(dbData,scores[0], scores[1])
-    
     print("gameH2HFound " +  str(gameH2HFound))
     if gameH2HFound != False:
         game = gameH2HFound
@@ -76,7 +78,7 @@ def h2hTwoTeams(key, scores, RawPointCheck, dbData):
             winner = game['team2_id']
         else:
             winner = 0
-        assignH2H(game, game['team1_id'], game['team2_id'], winner)
+        assignH2H(game, game['team1_id'], game['team2_id'], winner, h2h2h)
     else:
         print("Game not found")
         team1 = scores[0]
@@ -97,6 +99,7 @@ def head2head(RawPointCheck,dbData, h2h2h=False):
     #   team lost: 0 points
     #   tied: 1 point each
     # return H2H points for each team
+    
     print("H2H here: " + str(repeatAmount))
     if repeatAmount >= 1:
         ##If there are only 2 way-ties for points
@@ -105,15 +108,29 @@ def head2head(RawPointCheck,dbData, h2h2h=False):
         team1Score = ""
         # print("In Repeat Amount")
         for key, scores in RawPointCheck.items():
+            if h2h2h:
+                for teams in scores:
+                    teamTrackUpToStep[teams] = 4
+            if not h2h2h:
+                for teams in scores:
+                    teamTrackUpToStep[teams] = 2
             if len(scores) == 2:
-                returnStatement = h2hTwoTeams(key, scores, RawPointCheck, dbData)
+                returnStatement = h2hTwoTeams(key, scores, RawPointCheck, dbData, h2h2h)
             if len(scores) == 3:
                 returnStatement = h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2h)
 
     return returnStatement
-def assignH2H(game_id, team1, team2, winner):
+def assignH2H(game_id, team1, team2, winner, h2h2=False):
 
     # print("A game has been matched for H2H:  " + str(game_id) + " The winner is " + str(winner))
+    if h2h2:
+        print("Tied or not played!")
+        scoresForPool[team1]['H2H2points'] += 1
+        scoresForPool[team2]['H2H2points'] += 1
+        scoresForPool[team2]['TotalPoints'] += 0.1
+        scoresForPool[team2]['TotalPoints'] += 0.1
+        return
+        
     if winner == 0:
         print("Tied or not played!")
         scoresForPool[team1]['H2Hpoints'] += 1
@@ -121,6 +138,8 @@ def assignH2H(game_id, team1, team2, winner):
         scoresForPool[team2]['TotalPoints'] += 0.1
         scoresForPool[team2]['TotalPoints'] += 0.1
         return
+    teamTrackUpToStep[team1] = 2
+    teamTrackUpToStep[team2] = 2
     scoresForPool[winner]['H2Hpoints'] += 2
     scoresForPool[winner]['TotalPoints'] += 0.2
 
@@ -129,12 +148,41 @@ def assignH2H(game_id, team1, team2, winner):
     return True
 
 def pushPointstoDB(scoresForPool):
+    # TeamStackup to.... 
+    # 1 - Raw points
+    # 2 - H2H points
+    # 3 - PD points
+    # 4 - H2H2
+    # 5 - Goals In favor
+    
+    h2hPoints = ""
+    pdPoints = ""
+    gif = ""
     for teams in scoresForPool:
         data  = scoresForPool[teams]
-        print("teams " + str(poolName))
-        sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],data['H2Hpoints'], data['PDScore'],data['H2H2points'], data['TotalPnt'],data['RankNumber'], data['GoalsInFavour'])
+    #     tieBrakerReached = teamTrackUpToStep[teams]
+    #     if tieBrakerReached == 1:
+    #         # h2hPoints = data['H2Hpoints']
+    #     if tieBrakerReached == 2:
+    #         h2hPoints = data['H2Hpoints']
+    #     if tieBrakerReached == 3:
+    #         h2hPoints = data['H2Hpoints']
+    #         pdPoints = data['PDScore']
+    #     if tieBrakerReached == 4:
+    #         h2hPoints = data['H2Hpoints']
+    #         pdPoints = data['PDScore']
+    #         h2h2Points = data['H2H2points']
+    #      if tieBrakerReached == 5:
+        h2hPoints = data['H2Hpoints']
+        pdPoints = data['PDScore']
+        h2h2Points = data['H2H2points']
+        gif = data['GoalsInFavour']
+        print("teams " + str(teams) + " teamTrackUpToStep: " + str(teamTrackUpToStep[teams]))
+        
+        sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], gif)
+        print(sql)
         cur.execute(sql)
-        print("Teams pushing to DB: " + str(sql))
+        # print("Teams pushing to DB: " + str(sql))
 
     # sql = "UPDATE customers SET address = 'Canyon 123' WHERE address = 'Valley 345'"
     # sql = "UPDATE `standings` SET h2h = 3, pd = 4, h2h2 = 0, final_rank = 1  WHERE tournament_id = 9 AND team_id = 10 "
@@ -164,6 +212,10 @@ def givePoints(scoreInfo):
     tie = 1
     initializeDictOfGames(team1)
     initializeDictOfGames(team2)
+
+    #To keep track up to where each team has gone
+    teamTrackUpToStep[team1] = 1
+    teamTrackUpToStep[team2] = 1
     tournament_id = scoreInfo['tournament_id']
 
     addPoints(team1, score1, 'GoalsInFavour')
@@ -226,6 +278,7 @@ def duplicateChecker(points, keyName):
         elif keyName == "rawPoints":
             rev_multidict.setdefault(value['rawPoints'], set()).add(key)
         else:
+            #To keep track up to where each team has gone
             totalPointsForTeam = value['rawPoints'] + (value['H2Hpoints'] * 0.1) + (value['PDScore'] * 0.0001) + (value['H2H2points'] * 0.00001) + (value['GoalsInFavour'] * 0.0000001)
             value['TotalPnt'] = totalPointsForTeam
             print("TotalPnt  is " + str(totalPointsForTeam))
@@ -234,6 +287,11 @@ def duplicateChecker(points, keyName):
         if len(values) > 1:
             # Tell us which teams/score repeat
             repeatData[key] = values
+            for items in values:
+                if keyName == "TotalPoints":
+                    teamTrackUpToStep[items] = 3
+                if keyName == "TotalPoints-GIF":
+                    teamTrackUpToStep[items] = 4
             # print("Repeats " + str(values))
             # print("Repeats " + str(key))
             repeat = True
@@ -287,7 +345,7 @@ def calculateStandings(pool):
             #Must check if duplicate
             print("Worked out H2H!")
             rankBasedOn()
-            return
+            return True
         else:
             print("--------------- Duplicate still found, going to PD  ---------------")
             RawPointCheckH2H2 =  duplicateChecker(scoresForPool, 'TotalPoints')
@@ -295,14 +353,22 @@ def calculateStandings(pool):
                 
                 print("--------------- No more duplicates, ending  ---------------")
                 rankBasedOn()
-                return
+                return True
 
             print("--------------- Still duplicates, going to H2H2  ---------------")
             H2H2 = head2head(RawPointCheckH2H2, dbData, True)
-            print("scoresForPool: " + str(scoresForPool))
+            
+            if H2H2:
+                print("--------------- H2H2 worked out  ---------------")
+                rankBasedOn()
+                return True
+            print("--------------- Still duplicates, going to GoalsInFavor  ---------------")
+            RawPointCheckGIF =  duplicateChecker(scoresForPool, 'TotalPoints-GIF')
+
+            print("--------------- Giving up, cant compute ---------------")
             rankBasedOn()
             
-            return
+            return False
   
     else:
         rankBasedOn()
@@ -337,6 +403,13 @@ def calculateStandings(pool):
 # tied: 1 point each
 # return H2H points for each team
 
+
+# TeamStackup to.... 
+# 1 - Raw points
+# 2 - H2H points
+# 3 - PD points
+# 4 - H2H2
+# 5 - Goals In favor
 #Main that gets called
 start = time.time()
 
