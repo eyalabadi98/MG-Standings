@@ -1,4 +1,3 @@
-from __future__ import print_function
 import pymysql
 import operator
 from threeteam import h2hThreeTeams
@@ -7,10 +6,32 @@ from passwords import DATABASE_HOST,DATABASE_USERNAME,DATABASE_PASSWORD
 import time
 
 
-#Main that gets called
+#Connect to MySQL Database
+mydb = pymysql.connections.Connection(
+  host=DATABASE_HOST,
+  user=DATABASE_USERNAME,
+  passwd=DATABASE_PASSWORD,
+  autocommit=True
+
+)
+cur = mydb.cursor(pymysql.cursors.DictCursor)
+print("\n")
+
+# mycursor = mydb.cursor(dictionary=True)
+cur.execute("use mgdb")
+# mycursor.execute("Select g.game_id, score1, score2, g.tournament_id, team1_id,team2_id, sport, gender, category from sign as s" 
+# + " INNER JOIN game as g on g.game_id = s.game_id" 
+# + " INNER JOIN tournament as t on g.tournament_id = t.tournament_id;")
+
+
+cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
++ " INNER JOIN game as g on g.game_id = s.game_id "
++" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
++ " INNER JOIN pool as p on p.team_id = g.team1_id")
+
 tournament_id = 9
 poolName = 'Pool A'
-
+pool = cur.fetchall()
 
 #creating dict for keeping track of all the scores
 scoresForPool = {}
@@ -20,14 +41,11 @@ PDforTeams = {}
 
 #Used to know what steps each team has gone up to, so we can avoid putting it in the database
 teamTrackUpToStep = {}
-cur = None
 
-mydb = None
-
-def calculateRawPoints(pool):
+def calculateRawPoints(dataGames):
     # #Calculates raw points for the teams
     print("Pool in Calculate: " + str(pool))
-    for game in pool:
+    for game in dataGames:
         # print("Game: " + str(game))
         givePoints(game)
         # print(game)
@@ -129,7 +147,7 @@ def assignH2H(game_id, team1, team2, winner, h2h2=False):
     # print("scoresForPool " + str(scoresForPool))
     return True
 
-def pushPointstoDB(scoresForPool,mydb, cur):
+def pushPointstoDB(scoresForPool):
     # TeamStackup to.... 
     # 1 - Raw points
     # 2 - H2H points
@@ -288,7 +306,7 @@ def giveRanks(sorted_teams):
     print('\n')
     return ranks
 
-def rankBasedOn(mydb, cur):
+def rankBasedOn():
     ##Puts the teams in order of ranks and places it on the database (not yet implemented)
     for team in scoresForPool:
         # if scoresForPool[team]['H2Hpoints'] >
@@ -300,7 +318,7 @@ def rankBasedOn(mydb, cur):
         teams = teams[0]
         scoresForPool[teams]['RankNumber'] = (stand +1)
     rankedTeams = giveRanks(sorted_teams)
-    pushPointstoDB(scoresForPool, mydb, cur)
+    pushPointstoDB(scoresForPool)
     return rankedTeams
     
 def MySQLCursorDictToDict(pool):
@@ -309,7 +327,7 @@ def MySQLCursorDictToDict(pool):
         dataDict.append(game)
     return dataDict
 
-def calculateStandings(pool, mydb, cur): 
+def calculateStandings(pool): 
     #Big Overall Method
     dbData = MySQLCursorDictToDict(pool)
     calculateRawPoints(pool)   
@@ -324,7 +342,7 @@ def calculateStandings(pool, mydb, cur):
         if H2H:
             #Must check if duplicate
             print("Worked out H2H!")
-            rankBasedOn(mydb, cur)
+            rankBasedOn()
             return True
         else:
             print("--------------- Duplicate still found, going to PD  ---------------")
@@ -332,7 +350,7 @@ def calculateStandings(pool, mydb, cur):
             if not RawPointCheckH2H2:
                 
                 print("--------------- No more duplicates, ending  ---------------")
-                rankBasedOn(mydb, cur)
+                rankBasedOn()
                 return True
 
             print("--------------- Still duplicates, going to H2H2  ---------------")
@@ -340,13 +358,13 @@ def calculateStandings(pool, mydb, cur):
             
             if H2H2:
                 print("--------------- H2H2 worked out  ---------------")
-                rankBasedOn(mydb, cur)
+                rankBasedOn()
                 return True
             print("--------------- Still duplicates, going to GoalsInFavor  ---------------")
             RawPointCheckGIF =  duplicateChecker(scoresForPool, 'TotalPoints-GIF')
 
             print("--------------- Giving up, cant compute ---------------")
-            rankBasedOn(mydb, cur)
+            rankBasedOn()
             
             return False
   
@@ -383,58 +401,6 @@ def calculateStandings(pool, mydb, cur):
 # tied: 1 point each
 # return H2H points for each team
 
-def lambda_handler(event="", context=""):
-    
-    #Connect to MySQL Database
-    mydb = pymysql.connections.Connection(
-      host=DATABASE_HOST,
-      user=DATABASE_USERNAME,
-      passwd=DATABASE_PASSWORD,
-      autocommit=True
-    
-    )
-    cur = mydb.cursor(pymysql.cursors.DictCursor)
-    print("\n")
-    
-    # mycursor = mydb.cursor(dictionary=True)
-    cur.execute("use mgdb")
-    # mycursor.execute("Select g.game_id, score1, score2, g.tournament_id, team1_id,team2_id, sport, gender, category from sign as s" 
-    # + " INNER JOIN game as g on g.game_id = s.game_id" 
-    # + " INNER JOIN tournament as t on g.tournament_id = t.tournament_id;")
-    
-    
-    cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
-    + " INNER JOIN game as g on g.game_id = s.game_id "
-    +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
-    + " INNER JOIN pool as p on p.team_id = g.team1_id")
-    
-    tournament_id = 9
-    poolName = 'Pool A'
-    pool = cur.fetchall()
-    
-    #creating dict for keeping track of all the scores
-    scoresForPool = {}
-    totalPointsForTeam = {}
-    goalsforTeam = {}
-    PDforTeams = {}
-    
-    #Used to know what steps each team has gone up to, so we can avoid putting it in the database
-    teamTrackUpToStep = {}
-    calculateStandings(pool, mydb, cur)
-    # for record in event['Records']:
-    #    print("test")
-    #    payload=record["body"]
-    #    print("Payload" + str(payload))
-    #    start = time.time()
-       
-    #    cur.close()
-    #    end = time.time()
-# print("Time to run " + str(end - start))
-
-
-if __name__ == "__main__":
-    lambda_handler()
-
 
 # TeamStackup to.... 
 # 1 - Raw points
@@ -442,3 +408,11 @@ if __name__ == "__main__":
 # 3 - PD points
 # 4 - H2H2
 # 5 - Goals In favor
+#Main that gets called
+start = time.time()
+
+calculateStandings(pool)
+
+cur.close()
+end = time.time()
+# print("Time to run " + str(end - start))
