@@ -137,31 +137,40 @@ def pushPointstoDB(scoresForPool,mydb, cur):
     # 4 - H2H2
     # 5 - Goals In favor
     
-    h2hPoints = ""
-    pdPoints = ""
-    gif = ""
-    h2h2Points = ""
+    # h2hPoints = None
+    # pdPoints = None
+    # gif = None
+    # h2h2Points = None
     for teams in scoresForPool:
         data  = scoresForPool[teams]
-    #     tieBrakerReached = teamTrackUpToStep[teams]
-    #     if tieBrakerReached == 1:
-    #         # h2hPoints = data['H2Hpoints']
-    #     if tieBrakerReached == 2:
-    #         h2hPoints = data['H2Hpoints']
-    #     if tieBrakerReached == 3:
-    #         h2hPoints = data['H2Hpoints']
-    #         pdPoints = data['PDScore']
-    #     if tieBrakerReached == 4:
-    #         h2hPoints = data['H2Hpoints']
-    #         pdPoints = data['PDScore']
-    #         h2h2Points = data['H2H2points']
-    #      if tieBrakerReached == 5:
-        h2hPoints = data['H2Hpoints']
-        pdPoints = data['PDScore']
-        h2h2Points = data['H2H2points']
-        gif = data['GoalsInFavour']
+        tieBrakerReached = teamTrackUpToStep[teams]
+        if tieBrakerReached == 1:
+             sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d,%3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'], data['TotalPnt'],data['RankNumber'])
+        if tieBrakerReached == 2:
+            h2hPoints = data['H2Hpoints']
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d, %d,%3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, data['TotalPnt'],data['RankNumber'])
+        if tieBrakerReached == 3:
+            h2hPoints = data['H2Hpoints']
+            pdPoints = data['PDScore']
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints, data['TotalPnt'],data['RankNumber'])
+        if tieBrakerReached == 4:
+            h2hPoints = data['H2Hpoints']
+            pdPoints = data['PDScore']
+            h2h2Points = data['H2H2points']
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'])
+        if tieBrakerReached == 5:
+            h2hPoints = data['H2Hpoints']
+            pdPoints = data['PDScore']
+            h2h2Points = data['H2H2points']
+            pdPoints = data['PDScore']
+            gif = data['GoalsInFavour']
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], gif)
+        # h2hPoints = data['H2Hpoints']
+        # pdPoints = data['PDScore']
+        # h2h2Points = data['H2H2points']
+        # gif = data['GoalsInFavour']
         print("teams " + str(teams) + " teamTrackUpToStep: " + str(teamTrackUpToStep[teams]))
-        sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], gif)
+        
         print(sql)
         cur.execute(sql)
         # print("Teams pushing to DB: " + str(sql))
@@ -395,21 +404,28 @@ def lambda_handler(event="", context=""):
     )
     cur = mydb.cursor(pymysql.cursors.DictCursor)
     print("\n")
-    
-    # mycursor = mydb.cursor(dictionary=True)
-    cur.execute("use mgdb")
-    # mycursor.execute("Select g.game_id, score1, score2, g.tournament_id, team1_id,team2_id, sport, gender, category from sign as s" 
-    # + " INNER JOIN game as g on g.game_id = s.game_id" 
-    # + " INNER JOIN tournament as t on g.tournament_id = t.tournament_id;")
-    
-    
-    cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
-    + " INNER JOIN game as g on g.game_id = s.game_id "
-    +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
-    + " INNER JOIN pool as p on p.team_id = g.team1_id")
-    
     tournament_id = 9
     poolName = 'Pool A'
+    cur.execute("use mgdb")
+    # mycursor = mydb.cursor(dictionary=True)
+    if poolName in ['Pool A', 'Pool B', 'Pool C']:
+        #print(pool)
+        cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
+        + " INNER JOIN game as g on g.game_id = s.game_id "
+        +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
+        + " LEFT JOIN pool as p on p.team_id = g.team1_id"
+        + " WHERE g.tournament_id = " + str(tournament_id) + " and p.pool = '" + poolName + "'")
+    else:
+        #print(pool)
+        cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
+        + " INNER JOIN game as g on g.game_id = s.game_id "
+        +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
+        + " LEFT JOIN pool as p on p.team_id = g.team1_id"
+        #+ " WHERE g.tournament_id = " + str(tournament_id) + " and p.pool IS NULL")
+        + " WHERE p.pool IS NULL")
+
+    
+    
     pool = cur.fetchall()
     
     #creating dict for keeping track of all the scores
@@ -422,8 +438,10 @@ def lambda_handler(event="", context=""):
     teamTrackUpToStep = {}
     calculateStandings(pool, mydb, cur)
     # for record in event['Records']:
+    #    x = []
     #    print("test")
     #    payload=record["body"]
+    #    [x.strip() for x in payload.split(',')]
     #    print("Payload" + str(payload))
     #    start = time.time()
        

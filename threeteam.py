@@ -228,6 +228,7 @@ def tiedThreeWay(rankings, allGamesNonTie, occuranceOfTeamPlays, rev_multidict, 
                 playedOncePlayeEachOther = didteamsplay(dbData,playedOnce[0], playedOnce[1])
                 if not playedOncePlayeEachOther:
                     #Can be 12 or 14
+                    print("Game 12 or 14")
                     twoTeamsTied = list(rev_tiedGamesDict[1])
 
                     Team1PlayedWonOnce = didteamsplay(dbData,twoTeamsTied[0], teamWonOnce)
