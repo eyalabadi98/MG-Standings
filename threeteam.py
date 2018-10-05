@@ -66,8 +66,16 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
 
 
     #Need to check if none of the games are tied to proceed below, if yes, go to another method
+
+    if allGamesNonTie == 2: #Two games tied, so automatically case 13
+        print("case 13: Two games tied")
+        rankings[scores[0]] = firstPlace
+        rankings[scores[1]] = firstPlace
+        rankings[scores[2]] = firstPlace
+        return True
+
     if allGamesNonTie > 0:
-        print("Found a game that is not tied, so going to rest of cases")
+        print("Found a game that is tied, so going to rest of cases")
         tiedThreeWay(rankings, allGamesNonTie, occuranceOfTeamPlays, rev_multidict, tiedGamesDict, teamWins, dbData)
     
         for team in rankings:
@@ -224,33 +232,41 @@ def tiedThreeWay(rankings, allGamesNonTie, occuranceOfTeamPlays, rev_multidict, 
                 playedOnce = rev_multidict[1]
                 teamWonOnce = list(teamWins.keys())[list(teamWins.values()).index(1)]
                 playedOnce = list(playedOnce)
-                playedOnce[0]
                 playedOncePlayeEachOther = didteamsplay(dbData,playedOnce[0], playedOnce[1])
                 if not playedOncePlayeEachOther:
                     #Can be 12 or 14
                     print("Game 12 or 14")
                     twoTeamsTied = list(rev_tiedGamesDict[1])
-
-                    Team1PlayedWonOnce = didteamsplay(dbData,twoTeamsTied[0], teamWonOnce)
-                    Team2PlayedWonOnce = didteamsplay(dbData,twoTeamsTied[1], teamWonOnce)
-
-                    if Team1PlayedWonOnce:
-                        winnerOfTeamAndWonOnce = Team1PlayedWonOnce['winner_id']
-                    if Team2PlayedWonOnce:
-                        winnerOfTeamAndWonOnce = Team2PlayedWonOnce['winner_id']
                     
-                    rankings[winnerOfTeamAndWonOnce] = firstPlace
-                    rankings[twoTeamsTied[0]] = secondPlace
-                    rankings[twoTeamsTied[1]] = secondPlace
-                    # if len(playedOnce) == 2 and teamWonOnce == "":
-                    #     if len(rev_multidict[2]) == 1:
-                    #         # teamThatWonTwice = teamWins.keys())[list(teamWins.values()).index(1)
+                    
+                    copyTeamsPlayed = occuranceOfTeamPlays.copy()
+                    del copyTeamsPlayed[twoTeamsTied[0]]
+                    del copyTeamsPlayed[twoTeamsTied[1]]
+                    teamLeft = random.choice(list(copyTeamsPlayed))
 
-                    #         #teamstied is the team that played twice
-                    #         #Meaning two teams are tied and one is winner. we need to check if the team 
-                    #         print("case 12")
+                    Team1PlayedNonTie = didteamsplay(dbData,twoTeamsTied[0], teamLeft)
+                    Team2PlayedNonTie = didteamsplay(dbData,twoTeamsTied[1], teamLeft)
+
+                    if Team1PlayedNonTie:
+                        winnerOfTeamAndWonOnce = Team1PlayedNonTie['winner_id']
+                    if Team2PlayedNonTie:
+                        winnerOfTeamAndWonOnce = Team2PlayedNonTie['winner_id']
+                    
+                    if winnerOfTeamAndWonOnce == twoTeamsTied[0] or winnerOfTeamAndWonOnce == twoTeamsTied[1]:
+                        print("case 14")
+                        print("Winner is one of the tied games")
+                        rankings[winnerOfTeamAndWonOnce] = secondPlace
+                        rankings[twoTeamsTied[0]] = firstPlace
+                        rankings[twoTeamsTied[1]] = firstPlace
+                        return True
+                    else:
+                        rankings[winnerOfTeamAndWonOnce] = firstPlace
+                        rankings[twoTeamsTied[0]] = secondPlace
+                        rankings[twoTeamsTied[1]] = secondPlace
+                        return True
             except:
                 print("")
+            print("Case not found")
 
 
 

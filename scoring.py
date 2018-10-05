@@ -165,21 +165,11 @@ def pushPointstoDB(scoresForPool,mydb, cur):
             pdPoints = data['PDScore']
             gif = data['GoalsInFavour']
             sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], gif)
-        # h2hPoints = data['H2Hpoints']
-        # pdPoints = data['PDScore']
-        # h2h2Points = data['H2H2points']
-        # gif = data['GoalsInFavour']
         print("teams " + str(teams) + " teamTrackUpToStep: " + str(teamTrackUpToStep[teams]))
-        
         print(sql)
         cur.execute(sql)
-        # print("Teams pushing to DB: " + str(sql))
-
-    # sql = "UPDATE customers SET address = 'Canyon 123' WHERE address = 'Valley 345'"
-    # sql = "UPDATE `standings` SET h2h = 3, pd = 4, h2h2 = 0, final_rank = 1  WHERE tournament_id = 9 AND team_id = 10 "
     return
-    # mycursor.execute(sql)
-    # mydb.commit()
+
 
 
 def initializeDictOfGames(team):
@@ -264,6 +254,11 @@ def duplicateChecker(points, keyName):
         if keyName == "":
             # print("KeyName dup")
             rev_multidict.setdefault(value, set()).add(key)
+        if keyName == "H2Hpoints":
+            totalPointsForTeamH2H = value['rawPoints'] + (value['H2Hpoints'] * 0.1)
+            value['H2HUpToNow'] = totalPointsForTeamH2H
+            print("TotalPnt  is " + str(totalPointsForTeamH2H))
+            rev_multidict.setdefault(value['H2HUpToNow'], set()).add(key)
         elif keyName == "rawPoints":
             rev_multidict.setdefault(value['rawPoints'], set()).add(key)
         else:
@@ -330,6 +325,12 @@ def calculateStandings(pool, mydb, cur):
         print(" --------------- Duplicate found, going to H2H  ---------------" + str(RawPointCheck))
         
         H2H = head2head(RawPointCheck, dbData)
+
+        #If teams are still tied, allow PD to go into DB
+        H2HDuplicate = duplicateChecker(scoresForPool, 'H2Hpoints')
+        for team in H2HDuplicate:
+            for teams_ID in H2HDuplicate[team]:
+                teamTrackUpToStep[teams_ID] = 3
         if H2H:
             #Must check if duplicate
             print("Worked out H2H!")
@@ -360,7 +361,7 @@ def calculateStandings(pool, mydb, cur):
             return False
   
     else:
-        rankBasedOn()
+        rankBasedOn(mydb, cur)
         print("No duplicates! Ending")
 
 
@@ -406,6 +407,7 @@ def lambda_handler(event="", context=""):
     print("\n")
     tournament_id = 9
     poolName = 'Pool A'
+    # poolName = ""
     cur.execute("use mgdb")
     # mycursor = mydb.cursor(dictionary=True)
     if poolName in ['Pool A', 'Pool B', 'Pool C']:
@@ -437,6 +439,7 @@ def lambda_handler(event="", context=""):
     #Used to know what steps each team has gone up to, so we can avoid putting it in the database
     teamTrackUpToStep = {}
     calculateStandings(pool, mydb, cur)
+    cur.close()
     # for record in event['Records']:
     #    x = []
     #    print("test")
