@@ -69,9 +69,14 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
 
     if allGamesNonTie == 2: #Two games tied, so automatically case 13
         print("case 13: Two games tied")
-        rankings[scores[0]] = firstPlace
-        rankings[scores[1]] = firstPlace
-        rankings[scores[2]] = firstPlace
+        rankings[scores[0]] = secondPlace
+        rankings[scores[1]] = secondPlace
+        rankings[scores[2]] = secondPlace
+
+        for team in rankings:
+            if h2h2 == True:
+                scoresForPool[team]['H2H2points'] = rankings[team]
+            scoresForPool[team]['H2Hpoints'] = rankings[team]
         return True
 
     if allGamesNonTie > 0:

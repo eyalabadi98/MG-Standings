@@ -128,7 +128,8 @@ def assignH2H(game_id, team1, team2, winner, h2h2=False):
     #add tied game score
     # print("scoresForPool " + str(scoresForPool))
     return True
-
+def teamOverrides(scoresForPool, teamOverrides, cur):
+    print("Manual Qualification")
 def pushPointstoDB(scoresForPool,mydb, cur):
     # TeamStackup to.... 
     # 1 - Raw points
@@ -141,33 +142,61 @@ def pushPointstoDB(scoresForPool,mydb, cur):
     # pdPoints = None
     # gif = None
     # h2h2Points = None
+
+    ##Method to override scores by table
+    if poolName:
+        cur.execute("SELECT * FROM mgdb.manualstanding where tournament_id = " + str(tournament_id) + " AND pool = '" + str(poolName) + "'")
+    if not poolName:
+        sqlOverride = "SELECT * FROM mgdb.manualstanding where tournament_id = " + str(tournament_id) + " AND pool is NULL"
+        print("sql " + sqlOverride)
+        cur.execute(sqlOverride)
+    teamStandingsOverride = cur.fetchall()
+    teamOverrides = {}
+    for teams in teamStandingsOverride:
+        teamOverrides[teams['team_id']] = teams
+
     for teams in scoresForPool:
         data  = scoresForPool[teams]
         tieBrakerReached = teamTrackUpToStep[teams]
         if tieBrakerReached == 1:
-             sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d,%3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'], data['TotalPnt'],data['RankNumber'])
+             sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d,%3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'], data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 2:
             h2hPoints = data['H2Hpoints']
-            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d, %d,%3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, data['TotalPnt'],data['RankNumber'])
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d, %d,%3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 3:
             h2hPoints = data['H2Hpoints']
             pdPoints = data['PDScore']
-            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints, data['TotalPnt'],data['RankNumber'])
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints, data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 4:
             h2hPoints = data['H2Hpoints']
             pdPoints = data['PDScore']
             h2h2Points = data['H2H2points']
-            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'])
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 5:
             h2hPoints = data['H2Hpoints']
             pdPoints = data['PDScore']
             h2h2Points = data['H2H2points']
             pdPoints = data['PDScore']
             gif = data['GoalsInFavour']
-            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], gif)
-        print("teams " + str(teams) + " teamTrackUpToStep: " + str(teamTrackUpToStep[teams]))
+            sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, gif, qualify ) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], gif, data['qualify'])
         print(sql)
         cur.execute(sql)
+        try:
+            if teamOverrides[teams]['manualqual'] == 1:
+                qualifySQl = "UPDATE mgdb.standings  SET qualify = %d  WHERE tournament_id = %d AND pool = '%s' AND team_id = %d " % (1,tournament_id, poolName, teams)
+                print(qualifySQl)
+                cur.execute(qualifySQl)
+                print("Team has been manually qualified: " + str(teams))
+                continue
+            if teamOverrides[teams]['manualqual'] == 0:
+                qualifySQl = "UPDATE mgdb.standings  SET qualify = %d  WHERE tournament_id = %d AND pool = '%s' AND team_id = %d " % (0,tournament_id, poolName, teams)
+                print(qualifySQl)
+                cur.execute(qualifySQl)
+                print("Team has not manually qualified: " + str(teams))
+                continue
+        except:
+            print("Team not found")
+        # print("teams " + str(teams) + " teamTrackUpToStep: " + str(teamTrackUpToStep[teams]))
     return
 
 
@@ -282,20 +311,43 @@ def duplicateChecker(points, keyName):
     print("Repeat Data: " + str(repeatData))
     return repeatData
 
-def giveRanks(sorted_teams):
+def giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedAlready, stillTie ):
     ranks = []
     print('\n')
+    cur.execute("select count(*) from game where tournament_id = 9")
+    totalNumberOfGames = cur.fetchone()
+    totalNumberOfGames = totalNumberOfGames['count(*)']
+    # totalNumberOfGamesPlayedAlready = len(1)
     for standings, scores in enumerate(sorted_teams):
+        scoresForPool[scores[0]]['qualify'] = 0
+        if stillTie:
+            print("Assigned -1 to all teams as all the games have not been reached")
+            scoresForPool[scores[0]]['qualify'] = -1
+            ranks.append(scores[0])
+            continue
+        if totalNumberOfGamesPlayedAlready < totalNumberOfGames:
+            scoresForPool[scores[0]]['qualify'] = -1
+            ranks.append(scores[0])
+            continue
+        if standings < qualitifactionAmount:
+            scoresForPool[scores[0]]['qualify'] = 1
         print("Final Standings: " + str(scores))
-        ranks.append(scores[0])
+        
     # print("ranks: " + str(ranks))
     print('\n')
     return ranks
 
-def rankBasedOn(mydb, cur):
+def rankBasedOn(mydb, cur, pool, stillTie):
     ##Puts the teams in order of ranks and places it on the database (not yet implemented)
-    for team in scoresForPool:
-        # if scoresForPool[team]['H2Hpoints'] >
+
+    cur.execute("SELECT qual_number FROM mgdb.tournament where tournament_id = " + str(tournament_id))
+
+    qualitifactionAmount = cur.fetchone()
+    qualitifactionAmount = qualitifactionAmount['qual_number']
+
+    
+    for qual,team in enumerate(scoresForPool):
+        # scoresForPool[team]['qualify'] = 0
         totalPointsForTeam[team] = scoresForPool[team]['rawPoints'] + (scoresForPool[team]['H2Hpoints'] * 0.1) + (scoresForPool[team]['PDScore'] * 0.0001 +  (scoresForPool[team]['H2H2points']) * 0.00001 + (scoresForPool[team]['GoalsInFavour'] * 0.0000001))
         scoresForPool[team]['TotalPnt'] = totalPointsForTeam[team]
     print("totalPointsForTeam: " + str(totalPointsForTeam))
@@ -303,7 +355,8 @@ def rankBasedOn(mydb, cur):
     for stand, teams in enumerate(sorted_teams):
         teams = teams[0]
         scoresForPool[teams]['RankNumber'] = (stand +1)
-    rankedTeams = giveRanks(sorted_teams)
+    totalNumberOfGamesPlayedAlready = len(pool)
+    rankedTeams = giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedAlready, stillTie)
     pushPointstoDB(scoresForPool, mydb, cur)
     return rankedTeams
     
@@ -331,10 +384,10 @@ def calculateStandings(pool, mydb, cur):
         for team in H2HDuplicate:
             for teams_ID in H2HDuplicate[team]:
                 teamTrackUpToStep[teams_ID] = 3
-        if H2H:
+        if not H2HDuplicate:
             #Must check if duplicate
             print("Worked out H2H!")
-            rankBasedOn(mydb, cur)
+            rankBasedOn(mydb, cur, pool, False)
             return True
         else:
             print("--------------- Duplicate still found, going to PD  ---------------")
@@ -342,7 +395,7 @@ def calculateStandings(pool, mydb, cur):
             if not RawPointCheckH2H2:
                 
                 print("--------------- No more duplicates, ending  ---------------")
-                rankBasedOn(mydb, cur)
+                rankBasedOn(mydb, cur, pool, False)
                 return True
 
             print("--------------- Still duplicates, going to H2H2  ---------------")
@@ -350,19 +403,20 @@ def calculateStandings(pool, mydb, cur):
             
             if H2H2:
                 print("--------------- H2H2 worked out  ---------------")
-                rankBasedOn(mydb, cur)
+                rankBasedOn(mydb, cur, pool,False)
                 return True
             print("--------------- Still duplicates, going to GoalsInFavor  ---------------")
             RawPointCheckGIF =  duplicateChecker(scoresForPool, 'TotalPoints-GIF')
 
             print("--------------- Giving up, cant compute ---------------")
-            rankBasedOn(mydb, cur)
+            rankBasedOn(mydb, cur, pool, True)
             
             return False
   
     else:
-        rankBasedOn(mydb, cur)
         print("No duplicates! Ending")
+        rankBasedOn(mydb, cur, pool, False)
+        return True
 
 
 
