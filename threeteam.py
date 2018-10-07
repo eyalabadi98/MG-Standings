@@ -87,10 +87,22 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
             if h2h2 == True:
                 scoresForPool[team]['H2H2points'] = rankings[team]
             scoresForPool[team]['H2Hpoints'] = rankings[team]
-        return
+        return True
 
 
     ##Check if non of the games are tie
+    if len(gamesPlayed) == 1:
+        print("Case 5 - only 1 game played")
+        rankings[scores[0]] = secondPlace
+        rankings[scores[1]] = secondPlace
+        rankings[scores[2]] = secondPlace
+
+        for team in rankings:
+            if h2h2 == True:
+                scoresForPool[team]['H2H2points'] = rankings[team]
+            scoresForPool[team]['H2Hpoints'] = rankings[team]
+        return False
+
     if len(gamesPlayed) == 2:
         #If only 2 games were played between these 3 teams, we know
         # it must be either case: 6, 7 ,8, 
@@ -111,18 +123,22 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
                 remainingTeam = didteamsplay(dbData, otherTeam1, otherTeam2 )
                 if not remainingTeam:
                     print("Remaning teams did not play each other!")
-                getWinnerVSOtherTeam = didteamsplay(dbData, teamThatPlayedTwice, otherTeam1 )
-                if getWinnerVSOtherTeam:
-                    #Case 6
+                getWinnerVSOtherTeam1 = didteamsplay(dbData, teamThatPlayedTwice, otherTeam1 )
+                getWinnerVSOtherTeam2 = didteamsplay(dbData, teamThatPlayedTwice, otherTeam2 )
+                #Case 6
                     #I check if if team (2nd place) and a *random* team played, if they do, I know the loser is third place, opposite for first place
-                    # rankings[teamThatPlayedTwice] = thirdPlace
-                    if getWinnerVSOtherTeam['winner_id'] == otherTeam2:
-                        rankings[otherTeam1] = thirdPlace
-                        rankings[otherTeam2] = firstPlace
-                    else:
+                    
+                if getWinnerVSOtherTeam1:
+                    if getWinnerVSOtherTeam1['winner_id'] == otherTeam1:
                         rankings[otherTeam1] = firstPlace
+                        rankings[teamThatPlayedTwice] = secondPlace
                         rankings[otherTeam2] = thirdPlace
-                    print(" case 6: I check if if team (2nd place) and a *random* team played, if they do, I know the loser is third place, opposite for first place")
+                if getWinnerVSOtherTeam2:
+                    if getWinnerVSOtherTeam2['winner_id'] == otherTeam2:
+                        rankings[otherTeam2] = firstPlace
+                        rankings[teamThatPlayedTwice] = secondPlace
+                        rankings[otherTeam1] = thirdPlace
+                print(" case 6: I check if if team (2nd place) and a *random* team played, if they do, I know the loser is third place, opposite for first place")
 
             if teamWins.setdefault(teamThatPlayedTwice, None) == 2:
                 #Case 8
@@ -132,6 +148,10 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
                 rankings[otherTeam1] = secondPlace
                 rankings[otherTeam2] = secondPlace
                 print(" case 8: If the team that played twice won twice, we know they are the winner ")
+                for team in rankings:
+                    if h2h2 == True:
+                        scoresForPool[team]['H2H2points'] = rankings[team]
+                    scoresForPool[team]['H2Hpoints'] = rankings[team]
                 return False
 
             if teamWins.setdefault(teamThatPlayedTwice, None) == 0:  
@@ -141,6 +161,10 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
                 rankings[teamThatPlayedTwice] = secondPlace
                 rankings[otherTeam1] = firstPlace
                 rankings[otherTeam2] = firstPlace
+                for team in rankings:
+                    if h2h2 == True:
+                        scoresForPool[team]['H2H2points'] = rankings[team]
+                    scoresForPool[team]['H2Hpoints'] = rankings[team]
                 return False
 
     if len(gamesPlayed) == 3:
@@ -167,6 +191,11 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
                     rankings[winnerOfRemaining] = secondPlace
                     del teamsThatPlayed[winnerOfRemaining]
                     rankings[random.choice(teamsThatPlayed.keys())] = thirdPlace
+
+                    for team in rankings:
+                        if h2h2 == True:
+                            scoresForPool[team]['H2H2points'] = rankings[team]
+                        scoresForPool[team]['H2Hpoints'] = rankings[team]
                     return True
 
         except:
@@ -174,6 +203,10 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
             for team in teamWins:
                 rankings[team] = secondPlace
                 print("Giving second place to " + str(team))
+                for team in rankings:
+                    if h2h2 == True:
+                        scoresForPool[team]['H2H2points'] = rankings[team]
+                    scoresForPool[team]['H2Hpoints'] = rankings[team]
                 return False
             
             
@@ -187,6 +220,10 @@ def h2hThreeTeams(key, scores, dbData, scoresForPool, h2h2):
             if h2h2 == True:
                 scoresForPool[team]['H2H2points'] = rankings[team]
             scoresForPool[team]['H2Hpoints'] = rankings[team]
+    for team in rankings:
+        if h2h2 == True:
+            scoresForPool[team]['H2H2points'] = rankings[team]
+        scoresForPool[team]['H2Hpoints'] = rankings[team]
     return 0
 #No team plays each other
 

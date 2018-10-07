@@ -8,9 +8,8 @@ import time
 
 
 #Main that gets called
-tournament_id = 9
-poolName = 'Pool A'
-
+tournament_id = 0
+poolName = ""
 
 #creating dict for keeping track of all the scores
 scoresForPool = {}
@@ -103,7 +102,7 @@ def head2head(RawPointCheck,dbData, h2h2h=False):
 
     return returnStatement
 def assignH2H(game_id, team1, team2, winner, h2h2=False):
-
+    
     # print("A game has been matched for H2H:  " + str(game_id) + " The winner is " + str(winner))
     if h2h2:
         print("Tied or not played!")
@@ -130,7 +129,7 @@ def assignH2H(game_id, team1, team2, winner, h2h2=False):
     return True
 def teamOverrides(scoresForPool, teamOverrides, cur):
     print("Manual Qualification")
-def pushPointstoDB(scoresForPool,mydb, cur):
+def pushPointstoDB(scoresForPool,mydb, cur, tournament_id, poolName):
     # TeamStackup to.... 
     # 1 - Raw points
     # 2 - H2H points
@@ -145,7 +144,9 @@ def pushPointstoDB(scoresForPool,mydb, cur):
 
     ##Method to override scores by table
     if poolName:
-        cur.execute("SELECT * FROM mgdb.manualstanding where tournament_id = " + str(tournament_id) + " AND pool = '" + str(poolName) + "'")
+        sqlOverride = "SELECT * FROM mgdb.manualstanding where tournament_id = " + str(tournament_id) + " AND pool = '" + str(poolName) + "'"
+        print("sql " + sqlOverride)
+        cur.execute(sqlOverride)
     if not poolName:
         sqlOverride = "SELECT * FROM mgdb.manualstanding where tournament_id = " + str(tournament_id) + " AND pool is NULL"
         print("sql " + sqlOverride)
@@ -197,6 +198,7 @@ def pushPointstoDB(scoresForPool,mydb, cur):
         except:
             print("Team not found")
         # print("teams " + str(teams) + " teamTrackUpToStep: " + str(teamTrackUpToStep[teams]))
+    cur.close()
     return
 
 
@@ -337,7 +339,7 @@ def giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedA
     print('\n')
     return ranks
 
-def rankBasedOn(mydb, cur, pool, stillTie):
+def rankBasedOn(mydb, cur, pool, stillTie, tournament_id, poolName):
     ##Puts the teams in order of ranks and places it on the database (not yet implemented)
 
     cur.execute("SELECT qual_number FROM mgdb.tournament where tournament_id = " + str(tournament_id))
@@ -357,7 +359,7 @@ def rankBasedOn(mydb, cur, pool, stillTie):
         scoresForPool[teams]['RankNumber'] = (stand +1)
     totalNumberOfGamesPlayedAlready = len(pool)
     rankedTeams = giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedAlready, stillTie)
-    pushPointstoDB(scoresForPool, mydb, cur)
+    pushPointstoDB(scoresForPool, mydb, cur,tournament_id, poolName )
     return rankedTeams
     
 def MySQLCursorDictToDict(pool):
@@ -366,7 +368,8 @@ def MySQLCursorDictToDict(pool):
         dataDict.append(game)
     return dataDict
 
-def calculateStandings(pool, mydb, cur): 
+def calculateStandings(pool, mydb, cur, tournament_id, poolName): 
+    print("PoolName: "  + str(poolName))
     #Big Overall Method
     dbData = MySQLCursorDictToDict(pool)
     calculateRawPoints(pool)   
@@ -387,7 +390,7 @@ def calculateStandings(pool, mydb, cur):
         if not H2HDuplicate:
             #Must check if duplicate
             print("Worked out H2H!")
-            rankBasedOn(mydb, cur, pool, False)
+            rankBasedOn(mydb, cur, pool, False, tournament_id, poolName)
             return True
         else:
             print("--------------- Duplicate still found, going to PD  ---------------")
@@ -395,7 +398,7 @@ def calculateStandings(pool, mydb, cur):
             if not RawPointCheckH2H2:
                 
                 print("--------------- No more duplicates, ending  ---------------")
-                rankBasedOn(mydb, cur, pool, False)
+                rankBasedOn(mydb, cur, pool, False, tournament_id, poolName)
                 return True
 
             print("--------------- Still duplicates, going to H2H2  ---------------")
@@ -403,19 +406,19 @@ def calculateStandings(pool, mydb, cur):
             
             if H2H2:
                 print("--------------- H2H2 worked out  ---------------")
-                rankBasedOn(mydb, cur, pool,False)
+                rankBasedOn(mydb, cur, pool,False, tournament_id, poolName)
                 return True
             print("--------------- Still duplicates, going to GoalsInFavor  ---------------")
             RawPointCheckGIF =  duplicateChecker(scoresForPool, 'TotalPoints-GIF')
 
             print("--------------- Giving up, cant compute ---------------")
-            rankBasedOn(mydb, cur, pool, True)
+            rankBasedOn(mydb, cur, pool, True,tournament_id, poolName)
             
             return False
   
     else:
         print("No duplicates! Ending")
-        rankBasedOn(mydb, cur, pool, False)
+        rankBasedOn(mydb, cur, pool, False, tournament_id, poolName)
         return True
 
 
@@ -447,7 +450,7 @@ def calculateStandings(pool, mydb, cur):
 # tied: 1 point each
 # return H2H points for each team
 
-def lambda_handler(event="", context=""):
+def lambda_handler(tournament_id, poolName):
     
     #Connect to MySQL Database
     mydb = pymysql.connections.Connection(
@@ -459,8 +462,8 @@ def lambda_handler(event="", context=""):
     )
     cur = mydb.cursor(pymysql.cursors.DictCursor)
     print("\n")
-    tournament_id = 9
-    poolName = 'Pool A'
+    # tournament_id = payload[0]
+    # poolName = payload[1]
     # poolName = ""
     cur.execute("use mgdb")
     # mycursor = mydb.cursor(dictionary=True)
@@ -492,24 +495,31 @@ def lambda_handler(event="", context=""):
     
     #Used to know what steps each team has gone up to, so we can avoid putting it in the database
     teamTrackUpToStep = {}
-    calculateStandings(pool, mydb, cur)
+    calculateStandings(pool, mydb, cur, tournament_id, poolName)
     cur.close()
-    # for record in event['Records']:
-    #    x = []
-    #    print("test")
-    #    payload=record["body"]
-    #    [x.strip() for x in payload.split(',')]
-    #    print("Payload" + str(payload))
-    #    start = time.time()
-       
-    #    cur.close()
-    #    end = time.time()
+    # 
 # print("Time to run " + str(end - start))
 
 
 if __name__ == "__main__":
-    lambda_handler()
+    lambda_handler(9, "Pool A")
 
+def start(event, context):
+    for record in event['Records']:
+        x = []
+        print("test")
+        payload=record["body"]
+        x = [x.strip() for x in payload.split(',')]
+        print("Payload" + str(x))
+        start = time.time()
+        tournament_id = x[0]
+        poolName = x[1]
+        lambda_handler(tournament_id, poolName)
+        
+        end = time.time()
+        print("Time: " + str(end-start))
+        return True
+    
 
 # TeamStackup to.... 
 # 1 - Raw points
