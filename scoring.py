@@ -144,7 +144,7 @@ def pushPointstoDB(scoresForPool,mydb, cur, tournament_id, poolName):
 
     ##Method to override scores by table
     if poolName:
-        sqlOverride = "SELECT * FROM mgdb.manualstanding where tournament_id = " + str(tournament_id) + " AND pool = '" + str(poolName) + "'"
+        sqlOverride = "SELECT * FROM mgdb.manualstanding where tournament_id = " + str(tournament_id) + " AND pool =' " + str(poolName) + " '; "
         print("sql " + sqlOverride)
         cur.execute(sqlOverride)
     if not poolName:
@@ -313,27 +313,36 @@ def duplicateChecker(points, keyName):
     print("Repeat Data: " + str(repeatData))
     return repeatData
 
-def giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedAlready, stillTie ):
+def giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedAlready, stillTie, tournament_id ):
     ranks = []
     print('\n')
-    cur.execute("select count(*) from game where tournament_id = 9")
+    cur.execute("select count(*) from game where tournament_id =" + str(tournament_id) + ";")
     totalNumberOfGames = cur.fetchone()
     totalNumberOfGames = totalNumberOfGames['count(*)']
     # totalNumberOfGamesPlayedAlready = len(1)
     for standings, scores in enumerate(sorted_teams):
         scoresForPool[scores[0]]['qualify'] = 0
+        print("ScoresforPool for team rank " + str(scoresForPool[scores[0]]['rank']))
         if stillTie:
             print("Assigned -1 to all teams as all the games have not been reached")
             scoresForPool[scores[0]]['qualify'] = -1
             ranks.append(scores[0])
             continue
+        print("TotalNumberOfGamesPlyed is " + str(totalNumberOfGamesPlayedAlready) )
+        print("TotalNumberofGames "+  str(totalNumberOfGames))
         if totalNumberOfGamesPlayedAlready < totalNumberOfGames:
+            print("All teams have not played, qualifying to 0")
             scoresForPool[scores[0]]['qualify'] = -1
             ranks.append(scores[0])
             continue
-        if standings < qualitifactionAmount:
+        
+        if scoresForPool[scores[0]]['rank'] <= qualitifactionAmount:
             scoresForPool[scores[0]]['qualify'] = 1
-        print("Final Standings: " + str(scores))
+        # if standings < qualitifactionAmount:
+        #     print("Standings is less than qualification amount")
+        #     scoresForPool[scores[0]]['qualify'] = 1
+        #Comprare for each individual team their rank (1,2,3) if my rank is less than or equal to the number of qualifyNeeded (QualificationAmount)
+        print("Final Standings: " + str(scoresForPool[scores[0]]))
         
     # print("ranks: " + str(ranks))
     print('\n')
@@ -358,7 +367,7 @@ def rankBasedOn(mydb, cur, pool, stillTie, tournament_id, poolName):
         teams = teams[0]
         scoresForPool[teams]['RankNumber'] = (stand +1)
     totalNumberOfGamesPlayedAlready = len(pool)
-    rankedTeams = giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedAlready, stillTie)
+    rankedTeams = giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedAlready, stillTie, tournament_id)
     pushPointstoDB(scoresForPool, mydb, cur,tournament_id, poolName )
     return rankedTeams
     
@@ -469,14 +478,10 @@ def lambda_handler(tournament_id, poolName):
     # mycursor = mydb.cursor(dictionary=True)
     if poolName in ['Pool A', 'Pool B', 'Pool C']:
         #print(pool)
-        cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
-        + " INNER JOIN game as g on g.game_id = s.game_id "
-        +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
-        + " LEFT JOIN pool as p on p.team_id = g.team1_id"
-        + " WHERE g.tournament_id = " + str(tournament_id) + " and p.pool = '" + poolName + "'")
+        cur.execute("Select distinct g.game_id, g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from mgdb.sign as s  INNER JOIN mgdb.game as g on g.game_id = s.game_id   INNER JOIN mgdb.tournament as t on g.tournament_id = t.tournament_id  LEFT JOIN mgdb.pool as p on p.team_id = g.team1_id  WHERE g.tournament_id = " + str(tournament_id) + " and p.pool = '" + poolName + "'")
     else:
         #print(pool)
-        cur.execute("Select g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
+        cur.execute("Select distinct g.game_id, g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
         + " INNER JOIN game as g on g.game_id = s.game_id "
         +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
         + " LEFT JOIN pool as p on p.team_id = g.team1_id"
@@ -487,7 +492,11 @@ def lambda_handler(tournament_id, poolName):
     
     pool = cur.fetchall()
     
+    if not pool:
+        print("Pool Empty!")
+        return False
     #creating dict for keeping track of all the scores
+    global scoresForPool,totalPointsForTeam, goalsforTeam,PDforTeams,teamTrackUpToStep
     scoresForPool = {}
     totalPointsForTeam = {}
     goalsforTeam = {}
@@ -505,21 +514,47 @@ if __name__ == "__main__":
     lambda_handler(9, "Pool A")
 
 def start(event, context):
-    for record in event['Records']:
-        x = []
-        print("test")
-        payload=record["body"]
-        x = [x.strip() for x in payload.split(',')]
-        print("Payload" + str(x))
-        start = time.time()
-        tournament_id = x[0]
-        poolName = x[1]
-        lambda_handler(tournament_id, poolName)
-        
-        end = time.time()
-        print("Time: " + str(end-start))
-        return True
+    # for record in event['Records']:
+    print("event is " + str(event))
+    x = []
+    print("test")
+    #payload=record["body"]
+    payload = event['team']
+    x = [x.strip() for x in payload.split(',')]
+    print("Payload" + str(x))
+    start = time.time()
+
+    #Delete values
+    tournament_id = 0
+    poolName = ""
+
+    #creating dict for keeping track of all the scores
+    scoresForPool = {}
+    totalPointsForTeam = {}
+    goalsforTeam = {}
+    PDforTeams = {}
+
+    #Used to know what steps each team has gone up to, so we can avoid putting it in the database
+    teamTrackUpToStep = {}
+    cur = None
+
+    mydb = None
+
+    tournamentNumber = x[0]
+    tournament_id = int(tournamentNumber)
+    # try:
+    #     # tournament_id = int(tournament_id)
+    #     print("Tournament_id " + type(tournament_id))
+    # except:
+    #     print("Error! Parameter for Tournament ID is not good! " + type(tournament_id))
+    #     print("Broken Tournament_id " + str(tournament_id))
+    poolName = x[1]
+    lambda_handler(tournament_id, poolName)
     
+    end = time.time()
+    print("Time: " + str(end-start))
+    return True
+
 
 # TeamStackup to.... 
 # 1 - Raw points
