@@ -230,31 +230,32 @@ def givePoints(scoreInfo):
 
     addPoints(team1, score1, 'GoalsInFavour')
     addPoints(team2, score2, 'GoalsInFavour')
-
+    print("Rachmanus for this game is ", scoreInfo['rachmanus'])
+    rachmanus = scoreInfo['rachmanus']
     if score1 > score2:
         # print("Winner is score1")
-        difference = scoreInfo['score1'] - scoreInfo['score2']
-        addPoints(team1, difference, 'PDScore')
-        addPoints(team2, (-1*difference), 'PDScore')
+        # difference = mins(scoreInfo['rachmanus'])
+        #difference = scoreInfo['score1'] - scoreInfo['score2']
+        #addPoints(team1, difference, 'PDScore')
+        #addPoints(team2, (-1*difference), 'PDScore')
         addPoints(team1, 1, 'Wins')
         addPoints(team2, 1, 'Losses')
         addPoints(team1, win, 'rawPoints')
         addPoints(team2,loss, 'rawPoints')
         scoreInfo['winner_id'] = scoreInfo['team1_id']
         scoreInfo['tie'] = False
-        return
     elif score1 < score2:
         # print("Winner is score2")
-        difference = scoreInfo['score2'] - scoreInfo['score1']
-        addPoints(team2, difference, 'PDScore')
-        addPoints(team1, (-1*difference), 'PDScore')
+        # difference = scoreInfo['score2'] - scoreInfo['score1']
+        # addPoints(team2, difference, 'PDScore')
+        # addPoints(team1, (-1*difference), 'PDScore')
         addPoints(team2, 1, 'Wins')
         addPoints(team1, 1, 'Losses')
         addPoints(team1, loss, 'rawPoints')
         addPoints(team2,win, 'rawPoints')
         scoreInfo['winner_id'] = scoreInfo['team2_id']
         scoreInfo['tie'] = False
-        return
+
     else:
         # print("Tie")
         addPoints(team1, tie, 'rawPoints')
@@ -263,8 +264,23 @@ def givePoints(scoreInfo):
         addPoints(team2, 1, 'Ties')
         scoreInfo['winner_id'] = 0
         scoreInfo['tie'] = True
-        return
 
+    if score1 >= score2:
+        Team1PD = min(rachmanus,scoreInfo['score1'] - scoreInfo['score2'])
+        Team2PD = -1*Team1PD
+        addPoints(team1, Team1PD, 'PDScore')
+        addPoints(team2, Team2PD, 'PDScore')
+        print("Rachmanus Score1>= Score1: " + str(Team1PD))
+        print("Rachmanus Score1>= Score2: " + str(Team2PD))
+
+    else:
+        Team2PD = min(rachmanus,scoreInfo['score2'] - scoreInfo['score1'])
+        Team1PD = -1*Team2PD
+        addPoints(team1, Team1PD, 'PDScore')
+        addPoints(team2, Team2PD, 'PDScore')
+        print("Rachmanus Else Team1: ", + str(Team1PD))
+        print("Rachmanus Else Team2: ", + str(Team2PD))
+    # print("Team Scores are : " + str(scoreInfo))
 def addPoints(team, addition, pointName):
     ##Generic function to add any type of points to a team
     # print("Adding " + str(addition) + " to: " + str(team))
@@ -272,6 +288,7 @@ def addPoints(team, addition, pointName):
         scoresForPool[team]['TotalPoints'] += addition
     scoresForPool[team][pointName] += addition
     # 
+    # print("ScoresForPool is "+ str(scoresForPool[team]))
 
 def duplicateChecker(points, keyName):
     ##It checks if the points are duplicate so it knows if it succeeded
@@ -322,7 +339,7 @@ def giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedA
     # totalNumberOfGamesPlayedAlready = len(1)
     for standings, scores in enumerate(sorted_teams):
         scoresForPool[scores[0]]['qualify'] = 0
-        print("ScoresforPool for team rank " + str(scoresForPool[scores[0]]['rank']))
+        print("ScoresforPool for team rank " + str(scoresForPool[scores[0]]))
         if stillTie:
             print("Assigned -1 to all teams as all the games have not been reached")
             scoresForPool[scores[0]]['qualify'] = -1
@@ -336,8 +353,11 @@ def giveRanks(sorted_teams, qualitifactionAmount, cur, totalNumberOfGamesPlayedA
             ranks.append(scores[0])
             continue
         
-        if scoresForPool[scores[0]]['rank'] <= qualitifactionAmount:
+
+        if scoresForPool[scores[0]]['RankNumber'] <= qualitifactionAmount:
             scoresForPool[scores[0]]['qualify'] = 1
+            continue
+        
         # if standings < qualitifactionAmount:
         #     print("Standings is less than qualification amount")
         #     scoresForPool[scores[0]]['qualify'] = 1
@@ -381,7 +401,9 @@ def calculateStandings(pool, mydb, cur, tournament_id, poolName):
     print("PoolName: "  + str(poolName))
     #Big Overall Method
     dbData = MySQLCursorDictToDict(pool)
-    calculateRawPoints(pool)   
+    calculateRawPoints(pool)
+    # rachmanus = getrachmanus(cur)
+    # print("Rachmanus is "+ str(rachmanus))
     
     # print("dbData: " + str(dbData))
     # print("Pool: " + pool)
@@ -476,17 +498,15 @@ def lambda_handler(tournament_id, poolName):
     # poolName = ""
     cur.execute("use mgdb")
     # mycursor = mydb.cursor(dictionary=True)
+    print("TournamentID is: " + str(tournament_id))
     if poolName in ['Pool A', 'Pool B', 'Pool C']:
-        #print(pool)
-        cur.execute("Select distinct g.game_id, g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from mgdb.sign as s  INNER JOIN mgdb.game as g on g.game_id = s.game_id   INNER JOIN mgdb.tournament as t on g.tournament_id = t.tournament_id  LEFT JOIN mgdb.pool as p on p.team_id = g.team1_id  WHERE g.tournament_id = " + str(tournament_id) + " and p.pool = '" + poolName + "'")
+        
+        cur.execute("Select distinct g.game_id, g.tournament_id, CONCAT(category,' ',gender,' ',t.sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2, rachmanus_max_pd as rachmanus, forfeit_score as forfeit from mgdb.sign as s  INNER JOIN mgdb.game as g on g.game_id = s.game_id   INNER JOIN mgdb.tournament as t on g.tournament_id = t.tournament_id  LEFT JOIN mgdb.pool as p on p.team_id = g.team1_id JOIN mgdb.sport as sp on t.sport=sp.sport  WHERE g.tournament_id = " + str(tournament_id) + " and p.pool = '" + poolName + "'")
     else:
         #print(pool)
-        cur.execute("Select distinct g.game_id, g.tournament_id, CONCAT(category,' ',gender,' ',sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2 from sign as s"
-        + " INNER JOIN game as g on g.game_id = s.game_id "
-        +" INNER JOIN tournament as t on g.tournament_id = t.tournament_id"
-        + " LEFT JOIN pool as p on p.team_id = g.team1_id"
+        cur.execute("Select distinct g.game_id, g.tournament_id, CONCAT(category,' ',gender,' ',t.sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2, rachmanus_max_pd as rachmanus, forfeit_score as forfeit from mgdb.sign as s  INNER JOIN mgdb.game as g on g.game_id = s.game_id   INNER JOIN mgdb.tournament as t on g.tournament_id = t.tournament_id  LEFT JOIN mgdb.pool as p on p.team_id = g.team1_id JOIN mgdb.sport as sp on t.sport=sp.sport WHERE p.pool IS NULL")
         #+ " WHERE g.tournament_id = " + str(tournament_id) + " and p.pool IS NULL")
-        + " WHERE p.pool IS NULL")
+        
 
     
     
@@ -511,22 +531,24 @@ def lambda_handler(tournament_id, poolName):
 
 
 if __name__ == "__main__":
-    lambda_handler(9, "Pool A")
+    lambda_handler(15, "Pool A")
 
 def start(event, context):
     # for record in event['Records']:
     print("event is " + str(event))
     x = []
+     #Delete values
+    tournament_id = 0
+    poolName = ""
     print("test")
     #payload=record["body"]
     payload = event['team']
     x = [x.strip() for x in payload.split(',')]
     print("Payload" + str(x))
+    # x = [16, 'Pool A']
     start = time.time()
 
-    #Delete values
-    tournament_id = 0
-    poolName = ""
+   
 
     #creating dict for keeping track of all the scores
     scoresForPool = {}
