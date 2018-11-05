@@ -160,20 +160,25 @@ def pushPointstoDB(scoresForPool,mydb, cur, tournament_id, poolName):
         data  = scoresForPool[teams]
         tieBrakerReached = teamTrackUpToStep[teams]
         if tieBrakerReached == 1:
+            print("Reached Tie Braker 1 ")
              sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d,%3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'], data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 2:
+            print("Reached Tie Braker 2 - H2H2points ")
             h2hPoints = data['H2Hpoints']
             sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d, %d,%3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 3:
+            print("Reached Tie Braker 3 - H2H and PDScore ")
             h2hPoints = data['H2Hpoints']
             pdPoints = data['PDScore']
             sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints, data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 4:
+            print("Reached Tie Braker 4 - H2H and PDScore and H2H2points")
             h2hPoints = data['H2Hpoints']
             pdPoints = data['PDScore']
             h2h2Points = data['H2H2points']
             sql = "REPLACE into standings (tournament_id, pool, team_id, raw_points, wins, losses, ties, h2h, pd, h2h2, final_points, rank, qualify) values(%d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, %3.10f, %d, %d)" % (tournament_id, poolName, teams, data['rawPoints'], data['Wins'], data['Losses'], data['Ties'],h2hPoints, pdPoints,h2h2Points, data['TotalPnt'],data['RankNumber'], data['qualify'])
         if tieBrakerReached == 5:
+            print("Reached Tie Braker 5 - H2H,PDScore, H2H2 and Goals in favor ")
             h2hPoints = data['H2Hpoints']
             pdPoints = data['PDScore']
             h2h2Points = data['H2H2points']
@@ -278,8 +283,8 @@ def givePoints(scoreInfo):
         Team1PD = -1*Team2PD
         addPoints(team1, Team1PD, 'PDScore')
         addPoints(team2, Team2PD, 'PDScore')
-        print("Rachmanus Else Team1: ", + str(Team1PD))
-        print("Rachmanus Else Team2: ", + str(Team2PD))
+        print("Rachmanus Else Team1: " + str(Team1PD))
+        print("Rachmanus Else Team2: " + str(Team2PD))
     # print("Team Scores are : " + str(scoreInfo))
 def addPoints(team, addition, pointName):
     ##Generic function to add any type of points to a team
@@ -499,8 +504,8 @@ def lambda_handler(tournament_id, poolName):
     cur.execute("use mgdb")
     # mycursor = mydb.cursor(dictionary=True)
     print("TournamentID is: " + str(tournament_id))
-    if poolName in ['Pool A', 'Pool B', 'Pool C']:
-        
+    if poolName in ['Pool A', 'Pool B', 'Pool C', 'Pool 0']:
+        print("Executing Pool SQL")
         cur.execute("Select distinct g.game_id, g.tournament_id, CONCAT(category,' ',gender,' ',t.sport) as tournament_name, p.pool, g.game_id, g.team1_id,  g.team2_id, score1, score2, rachmanus_max_pd as rachmanus, forfeit_score as forfeit from mgdb.sign as s  INNER JOIN mgdb.game as g on g.game_id = s.game_id   INNER JOIN mgdb.tournament as t on g.tournament_id = t.tournament_id  LEFT JOIN mgdb.pool as p on p.team_id = g.team1_id JOIN mgdb.sport as sp on t.sport=sp.sport  WHERE g.tournament_id = " + str(tournament_id) + " and p.pool = '" + poolName + "'")
     else:
         #print(pool)
